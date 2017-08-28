@@ -1,0 +1,19 @@
+extends ../layouts/default
+
+block intro
+	.container
+		h1 导入 Excel 题目
+		
+block content
+	.container
+		if submitted
+			h3 导入成功
+		else
+			.row: .col-sm-8.col-md-6
+				form(method='post')
+					input(type='hidden', name='action', value='import')
+					.form-group
+						label Excel 文件
+						input(type='file', name='file').form-control
+					.form-actions
+						button(type='submit').btn.btn-primary 提交
