@@ -1,44 +1,6 @@
-var keystone = require('keystone');
-var Excel = require('exceljs');
-var Question = keystone.list('Question');
-var TYPES_MAP = {
-    '单选': 'choice',
-    '多选': 'multiple-choices',
-    '填空': 'cloze'
-};
+const Excel = require('exceljs');
 
-exports = module.exports = function (req, res) {
-
-    var view = new keystone.View(req, res);
-    var locals = res.locals;
-
-    // Set locals
-    locals.section = 'uploadXLSX';
-    locals.submitted = false;
-
-    // On POST requests, add the Enquiry item to the database
-    view.on('post', { action: 'import' }, function (next) {
-        xlsx2json(req.files.file.path).then(questions => {
-            (questions || []).forEach(q => {
-                new Question.model({
-                    name: q.question,
-                    type: TYPES_MAP[q.type] || 'choice',
-                    weight: q.weight || 1,
-                    score: q.score || 1,
-                    options: q.options || [],
-                    answer: q.anwser
-                }).save((err, item) => {
-                    console.log(item);
-                });
-            });
-
-            locals.submitted = true;
-            next();
-        });
-    });
-
-    view.render('upload_xlsx');
-};
+xlsx2json('./sample.xlsx').then(args => console.log(args));
 
 function xlsx2json(filename) {
     let sheets = [];
@@ -93,7 +55,7 @@ function xlsx2json(filename) {
                 });
             });
         });
-
+        
         return sheets;
     });
 }
