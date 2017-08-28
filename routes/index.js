@@ -38,7 +38,8 @@ exports = module.exports = function (app) {
     // Views
     app.get('/', routes.views.index);
     app.use('/contact', routes.views.contact);
-    app.use('/upload/xlsx', routes.views.upload_xlsx);
+    // to protect a route so that only admins can see it, use the requireUser middleware
+    app.use('/upload/xlsx', middleware.requireUser, routes.views.upload_xlsx);
 
     // APIs
     app.use('/api/', keystone.middleware.api);
@@ -50,8 +51,4 @@ exports = module.exports = function (app) {
     app.get('/api/exam/detail/:id', APIs.exam.detail);
     app.get('/api/exam/review/:id', APIs.exam.review);
     app.get('/api/exam/accomplish/:openid', APIs.exam.accomplish);
-
-    // NOTE: To protect a route so that only admins can see it, use the requireUser middleware:
-    // app.get('/protected', middleware.requireUser, routes.views.protected);
-
 };
