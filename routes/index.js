@@ -39,7 +39,7 @@ exports = module.exports = function (app) {
     app.get('/', routes.views.index);
     app.use('/contact', routes.views.contact);
     // to protect a route so that only admins can see it, use the requireUser middleware
-    app.use('/upload/xlsx', middleware.requireUser, routes.views.upload_xlsx);
+    app.use('/console/upload/xlsx', middleware.requireUser, routes.views.upload_xlsx);
 
     // APIs
     app.use('/api/', keystone.middleware.api);
