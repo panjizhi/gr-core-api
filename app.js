@@ -52,8 +52,7 @@ keystone.set('routes', require('./routes'));
 keystone.set('nav', {
     '考卷': ['questions', 'papers'],
     '成绩': ['students', 'results'],
-    '分派考试': 'dispatches',
-    '上传试题': 'upload/xlsx'
+    '分派考试': 'dispatches'
 });
 
 // Start Keystone to connect to your database and initialise the web server
