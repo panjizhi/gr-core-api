@@ -26,7 +26,7 @@ exports = module.exports = function (req, res) {
                     weight: q.weight || 1,
                     score: q.score || 1,
                     options: q.options || [],
-                    answer: q.anwser
+                    answer: q.answer
                 }).save((err, item) => {
                     console.log(item);
                 });
@@ -88,9 +88,9 @@ function xlsx2json(filename) {
                             item.answer = text.split('').join(',');
                             break;
                     }
-
-                    sheets.push(item);
                 });
+
+                sheets.push(item);
             });
         });
 
