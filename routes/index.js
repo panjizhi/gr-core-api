@@ -37,8 +37,8 @@ var APIs = importRoutes('./api');
 exports = module.exports = function (app) {
     // Views
     app.get('/', routes.views.index);
-    app.get('/contact', routes.views.contact);
-    app.get('/upload/xlsx', routes.views.upload_xlsx);
+    app.use('/contact', routes.views.contact);
+    app.use('/upload/xlsx', routes.views.upload_xlsx);
 
     // APIs
     app.use('/api/', keystone.middleware.api);
