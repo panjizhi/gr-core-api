@@ -6,8 +6,10 @@ block intro
 		
 block content
 	.container
-		if submitted
-			h3 导入成功
+		if error
+			h3 #{error}
+		else if submitted
+			h3 成功导入 #{count} 条数据
 		else
 			.row: .col-sm-8.col-md-6
 				form(method='post', enctype='multipart/form-data')

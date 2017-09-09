@@ -19,21 +19,29 @@ exports = module.exports = function (req, res) {
     // On POST requests, add the Enquiry item to the database
     view.on('post', { action: 'import' }, function (next) {
         xlsx2json(req.files.file.path).then(questions => {
-            (questions || []).forEach(q => {
+            Promise.all((questions || []).map(q => new Promise((resolve, reject) => {
                 new Question.model({
                     name: q.question,
                     type: TYPES_MAP[q.type] || 'choice',
-                    weight: q.weight || 1,
-                    score: q.score || 1,
+                    weight: q.weight,
+                    score: q.score,
                     options: q.options || [],
                     answer: q.answer
                 }).save((err, item) => {
-                    console.log(item);
+                    if (err) reject(err);
+                    resolve(item);
                 });
-            });
+            }))).then(arr => {
+                locals.submitted = true;
+                locals.count = arr.length;
 
-            locals.submitted = true;
-            next();
+                next();
+            }, err => {
+                locals.submitted = true;
+                locals.error = JSON.stringify(err);
+
+                next();
+            });
         });
     });
 
@@ -54,7 +62,9 @@ function xlsx2json(filename) {
                     type: '',
                     question: '',
                     options: [],
-                    answer: ''
+                    answer: '',
+                    weight: 0,
+                    score: 0
                 };
 
                 row.eachCell({
@@ -86,6 +96,12 @@ function xlsx2json(filename) {
                             break;
                         case 8:
                             item.answer = text.split('').join(',');
+                            break;
+                        case 9:
+                            item.weight = parseInt(text, 10) || 0;
+                            break;
+                        case 10:
+                            item.score = parseInt(text, 10) || 0;
                             break;
                     }
                 });
