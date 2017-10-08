@@ -1,6 +1,7 @@
 const keystone  = require('keystone');
 const Excel     = require('exceljs');
 const Question  = keystone.list('Question');
+const Paper     = keystone.list('Paper');
 
 const CHOICE_TYPE       = '单选';
 const MULT_CHOICES_TYPE = '多选';
@@ -22,25 +23,32 @@ exports = module.exports = function (req, res) {
   // On POST requests, add the Enquiry item to the database
   view.on('post', { action: 'import' }, function (next) {
     xlsx2json(req.files.file.path).then(result => {
-      console.log(result);
       Promise.all((result.questions || []).map(q => new Promise((resolve, reject) => {
-        // new Question.model({
-        //   name: q.question,
-        //   type: TYPES_MAP[q.type] || TYPES_MAP[CHOICE_TYPE],
-        //   weight: q.weight,
-        //   score: q.score,
-        //   options: q.options || [],
-        //   answer: q.answer
-        // }).save((err, item) => {
-        //   if (err) reject(err);
-        //   resolve(item);
-        // });
-        resolve(item);
-      }))).then(arr => {
+        new Question.model({
+          name: q.question,
+          type: TYPES_MAP[q.type] || TYPES_MAP[CHOICE_TYPE],
+          weight: q.weight,
+          score: q.score,
+          options: q.options || [],
+          answer: q.answer
+        }).save((err, item) => {
+          if (err) reject(err);
+          resolve(item);
+        });
+      }))).then(items => {
+        locals.count     = items.length;
         locals.submitted = true;
-        locals.count = arr.length;
 
-        next();
+        console.log(items);
+
+        new Paper.model({
+          name: result.title,
+          questions: arr.map(items => item._id)
+        }).save((err, ret) => {
+          if (err) reject(err);
+          console.log(ret);
+          next();
+        })
       }, err => {
         locals.submitted = true;
         locals.error = JSON.stringify(err);
@@ -69,7 +77,6 @@ function xlsx2json(filename) {
             if (colNumber === 2) {
               result.title = _text(cell.value);
             }
-            console.log(_text(cell.value));
           });
           return true;
         }
