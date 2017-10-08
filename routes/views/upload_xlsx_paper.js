@@ -39,14 +39,11 @@ exports = module.exports = function (req, res) {
         locals.count     = items.length;
         locals.submitted = true;
 
-        console.log(items);
-
         new Paper.model({
           name: result.title,
           questions: items.map(item => item._id)
         }).save((err, ret) => {
           if (err) reject(err);
-          console.log(ret);
           next();
         })
       }, err => {
