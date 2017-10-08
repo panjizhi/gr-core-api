@@ -43,7 +43,7 @@ exports = module.exports = function (req, res) {
 
         new Paper.model({
           name: result.title,
-          questions: arr.map(items => item._id)
+          questions: items.map(item => item._id)
         }).save((err, ret) => {
           if (err) reject(err);
           console.log(ret);
