@@ -12,28 +12,30 @@ const TYPES_MAP         = {
 };
 
 exports = module.exports = function (req, res) {
-  var view   = new keystone.View(req, res);
-  var locals = res.locals;
+  const view   = new keystone.View(req, res);
+  const locals = res.locals;
 
   // Set locals
-  locals.section   = 'upload_xlsx';
+  locals.section   = 'upload_xlsx_paper';
   locals.submitted = false;
 
   // On POST requests, add the Enquiry item to the database
   view.on('post', { action: 'import' }, function (next) {
-    xlsx2json(req.files.file.path).then(questions => {
-      Promise.all((questions || []).map(q => new Promise((resolve, reject) => {
-        new Question.model({
-          name: q.question,
-          type: TYPES_MAP[q.type] || TYPES_MAP[CHOICE_TYPE],
-          weight: q.weight,
-          score: q.score,
-          options: q.options || [],
-          answer: q.answer
-        }).save((err, item) => {
-          if (err) reject(err);
-          resolve(item);
-        });
+    xlsx2json(req.files.file.path).then(result => {
+      console.log(result);
+      Promise.all((result.questions || []).map(q => new Promise((resolve, reject) => {
+        // new Question.model({
+        //   name: q.question,
+        //   type: TYPES_MAP[q.type] || TYPES_MAP[CHOICE_TYPE],
+        //   weight: q.weight,
+        //   score: q.score,
+        //   options: q.options || [],
+        //   answer: q.answer
+        // }).save((err, item) => {
+        //   if (err) reject(err);
+        //   resolve(item);
+        // });
+        resolve(item);
       }))).then(arr => {
         locals.submitted = true;
         locals.count = arr.length;
@@ -48,17 +50,32 @@ exports = module.exports = function (req, res) {
     });
   });
 
-  view.render('upload_xlsx');
+  view.render('upload_xlsx_paper');
 };
 
 function xlsx2json(filename) {
-  const sheets = [];
+  const result = {
+    title: '',
+    questions: []
+  };
 
   return new Excel.Workbook().xlsx.readFile(filename).then(worksheets => {
     worksheets.eachSheet(worksheet => {
       worksheet.eachRow((row, rowNumber) => {
-        if ( rowNumber === 1 ) { // 列表标题
-          return;
+        if ( rowNumber === 1 ) { // 试卷名
+          row.eachCell({
+            includeEmpty: true
+          }, (cell, colNumber) => {
+            if (colNumber === 2) {
+              result.title = _text(cell.value);
+            }
+            console.log(_text(cell.value));
+          });
+          return true;
+        }
+
+        if (rowNumber === 2 ) { // 题目列表标题
+          return true;
         }
 
         const item = {
@@ -116,11 +133,11 @@ function xlsx2json(filename) {
           }
         });
 
-        sheets.push(item);
+        result.questions.push(item);
       });
     });
 
-    return sheets;
+    return result;
   });
 }
 
