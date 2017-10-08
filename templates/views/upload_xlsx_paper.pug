@@ -9,7 +9,7 @@ block content
 		if error
 			h3 #{error}
 		else if submitted
-			h3 成功导入 #{count} 条数据
+			h3 成功导入考卷 #{paper} , 包含 #{count} 道考题
 		else
 			.row: .col-sm-8.col-md-6
 				form(method='post', enctype='multipart/form-data')
