@@ -36,6 +36,7 @@ exports = module.exports = function (req, res) {
           resolve(item);
         });
       }))).then(items => {
+        locals.paper     = result.title;
         locals.count     = items.length;
         locals.submitted = true;
 
