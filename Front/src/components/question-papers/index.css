@@ -1,0 +1,38 @@
+
+.qpps-container:empty:before
+{
+    content: "暂无试卷";
+    padding: 16px;
+    border-bottom: 1px solid #e8e8e8;
+    color: rgba(0, 0, 0, 0.45);
+    text-align: center;
+    display: block;
+}
+
+.qpps-item
+{
+    min-height: 60px;
+    border-bottom: 1px solid #e8e8e8;
+    justify-content: flex-start;
+    align-items: center;
+    display: flex;
+}
+
+.qpps-item > *:first-child
+{
+    margin: 0 12px;
+}
+
+.qpps-item > *:last-child
+{
+    margin-right: 12px;
+    flex: 1;
+}
+
+.qpps-pagination
+{
+    padding-top: 24px;
+    justify-content: flex-start;
+    align-items: center;
+    display: flex;
+}
