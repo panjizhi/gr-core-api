@@ -1,0 +1,19 @@
+
+.qart-container
+{
+    justify-content: center;
+    align-items: flex-start;
+    display: flex;
+}
+
+.qart-container > *:first-child
+{
+    margin-right: 24px;
+    flex: 1;
+}
+
+.qart-container > *:last-child
+{
+    width: 280px;
+    height: 280px;
+}

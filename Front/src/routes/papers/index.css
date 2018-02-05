@@ -1,0 +1,30 @@
+.category-sider
+{
+    margin-right: 24px;
+    padding: 24px;
+    background: #fff !important;
+}
+
+.qtbl-search
+{
+    padding-bottom: 24px;
+    justify-content: flex-end;
+    align-items: flex-start;
+    display: flex;
+}
+
+.qtbl-footer
+{
+    padding-top: 24px;
+    justify-content: flex-end;
+    align-items: flex-end;
+    display: flex;
+}
+
+.qtbl-pagination
+{
+    justify-content: flex-end;
+    align-items: flex-end;
+    display: flex;
+    flex: 1;
+}

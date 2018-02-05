@@ -1,0 +1,21 @@
+
+.cat-append
+{
+    overflow: hidden;
+}
+
+.cat-append-input input
+{
+    font-size: 12px;
+}
+
+.cat-append-item
+{
+    margin: 6px 12px 0;
+    line-height: 26px;
+}
+
+.cat-append-item:last-child
+{
+    margin-bottom: 12px;
+}

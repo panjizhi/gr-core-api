@@ -1,0 +1,19 @@
+
+.qcalc-container
+{
+    justify-content: center;
+    align-items: flex-start;
+    display: flex;
+}
+
+.qcalc-container > *:first-child
+{
+    margin-right: 24px;
+    flex: 1;
+}
+
+.qcalc-container > *:last-child
+{
+    width: 280px;
+    height: 280px;
+}

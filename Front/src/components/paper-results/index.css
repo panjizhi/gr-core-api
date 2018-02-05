@@ -1,0 +1,84 @@
+
+.qpps-container:empty:before
+{
+    content: "暂无成绩";
+    padding: 16px;
+    border-bottom: 1px solid #e8e8e8;
+    color: rgba(0, 0, 0, 0.45);
+    text-align: center;
+    display: block;
+}
+
+.qpps-item
+{
+    padding: 12px;
+    min-height: 60px;
+    border-bottom: solid 1px #e8e8e8;
+    justify-content: flex-start;
+    align-items: center;
+    display: flex;
+}
+
+.prlt-avatar
+{
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.prlt-avatar > img
+{
+    width: 100%;
+    height: 100%;
+}
+
+.qpps-item > *:not(:last-child):not(:first-child)
+{
+    flex: 1;
+}
+
+.qpps-item > *:not(:first-child)
+{
+    margin-left: 12px;
+}
+
+.prlt-top,
+.prlt-bottom
+{
+    justify-content: flex-start;
+    align-items: center;
+    display: flex;
+}
+
+.prlt-top > *:not(:first-child):not(:empty),
+.prlt-bottom > *:not(:first-child):not(:empty)
+{
+    margin-left: 12px;
+}
+
+.prlt-bottom
+{
+    margin-top: 4px;
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.prlt-action
+{
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.prlt-score:before
+{
+    content: "得分 ";
+}
+
+.qpps-pagination
+{
+    padding-top: 24px;
+    justify-content: flex-start;
+    align-items: center;
+    display: flex;
+}

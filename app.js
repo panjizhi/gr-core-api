@@ -1,71 +1,38 @@
-// Simulate config options from your production environment by
-// customising the .env file in your project's root folder.
-require('dotenv').config();
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const settings = require('./settings');
+const inserv = require('./inserv');
+const router = require('./router');
+const cors = require('cors');
+const open = require('./open');
+const api = require('./api');
+const app = express();
 
-// Require keystone
-var keystone = require('keystone');
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
 
-// Initialise Keystone with your project's configuration.
-// See http://keystonejs.com/guide/config for available options
-// and documentation.
+// uncomment after placing your favicon in /public
+app.use('/assets', cors(), express.static('assets'));
+const strgStgs = settings.cdn.storage;
+app.use(strgStgs.path, cors(), express.static(strgStgs.local));
 
-keystone.init({
-    'name': 'GR-core-APIs',
-    'brand': '客来何处',
+app.use(cookieParser());
+app.use(session(settings.session));
 
-    'view engine': 'pug',
-    'views': 'templates/views',
-    'static': 'public',
-    'favicon': 'public/favicon.ico',
-    'less': 'public',
-    'emails': 'templates/emails',
+app.use('/open', open);
 
-    'frame guard': 'deny',
-    'healthchecks': true,
-    'admin path': 'console',
+app.use('/api', api);
 
-    'auto update': true,
-    'session': true,
-    'auth': true,
-    'user model': 'User',
-    'cookie secret': '6bagA6yTTptqlTH4r1HNwnED53BJDSvAL3NpPGAzdz4'
+app.use('/inserv', inserv);
+app.use('/', router);
+
+app.use((err, req, res) =>
+{
+    console.log(err);
+    res.status(500).end();
 });
 
-// Load your project's Models
-keystone.import('models');
-
-// Setup common locals for your templates. The following are required for the
-// bundled templates and layouts. Any runtime locals (that should be set uniquely
-// for each request) should be added to ./routes/middleware.js
-keystone.set('locals', {
-    _: require('lodash'),
-    env: keystone.get('env'),
-    utils: keystone.utils,
-    editable: keystone.content.editable,
-});
-
-// Load your project's Routes
-keystone.set('routes', require('./routes'));
-
-
-// Configure the navigation bar in Keystone's Admin UI
-keystone.set('nav', {
-    '考卷': ['questions', 'papers'],
-    '成绩': ['students', 'results'],
-    '分派考试': 'dispatches'
-});
-
-// Start Keystone to connect to your database and initialise the web server
-
-
-if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
-    console.log('----------------------------------------'
-    + '\nWARNING: MISSING MAILGUN CREDENTIALS'
-    + '\n----------------------------------------'
-    + '\nYou have opted into email sending but have not provided'
-    + '\nmailgun credentials. Attempts to send will fail.'
-    + '\n\nCreate a mailgun account and add the credentials to the .env file to'
-    + '\nset up your mailgun integration');
-}
-
-keystone.start();
+module.exports = app;

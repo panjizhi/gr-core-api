@@ -1,0 +1,119 @@
+.result-sider
+{
+    margin-left: 24px;
+    padding: 24px;
+    background: #fff !important;
+}
+
+.qitem-single:not(:last-child)
+{
+    margin-bottom: 24px;
+}
+
+.qitem-double > div > div:first-child,
+.qitem-single:not(.qitem-double) > div:first-child
+{
+    float: left;
+    width: 100px;
+}
+
+.qitem-double > div > div:last-child,
+.qitem-single:not(.qitem-double) > div:last-child
+{
+    margin-left: 124px;
+}
+
+.qitem-double
+{
+    align-items: flex-start;
+    justify-content: center;
+    display: flex;
+}
+
+.pitem-split
+{
+    min-height: 560px;
+    align-items: flex-start;
+    justify-content: center;
+    display: flex;
+}
+
+.qitem-double > div
+{
+    flex: 1;
+}
+
+.pitem-score
+{
+    width: 128px !important;
+}
+
+.category-select,
+.pitem-select
+{
+    width: 70%;
+}
+
+.qitem-options
+{
+    padding: 18px 0 12px;
+    min-height: 300px;
+}
+
+.qitem-footer
+{
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.pitem-questions > *:not(:last-child)
+{
+    margin-bottom: 24px;
+}
+
+.pitem-select
+{
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.pitem-select > *
+{
+    flex: 1;
+}
+
+.pitem-select > *:not(:last-child)
+{
+    margin-right: 24px;
+}
+
+.pitem-split > *:first-child,
+.pitem-split > *:last-child
+{
+    flex: 1;
+}
+
+.pitem-control
+{
+    width: 120px;
+    height: 400px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.pitem-control > *:not(:last-child)
+{
+    margin-bottom: 24px;
+}
+
+.qtbl-footer
+{
+    padding-top: 24px;
+    justify-content: flex-end;
+    align-items: flex-end;
+    display: flex;
+}

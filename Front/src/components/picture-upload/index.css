@@ -1,0 +1,19 @@
+
+.pup-container
+{
+    width: 100%;
+    height: 100%;
+}
+
+.pup-container > .ant-upload
+{
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.pup-container img
+{
+    width: 100%;
+    height: 100%;
+}

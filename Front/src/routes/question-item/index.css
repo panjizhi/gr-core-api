@@ -1,0 +1,47 @@
+.qitem-single:not(:last-child)
+{
+    margin-bottom: 24px;
+}
+
+.qitem-double > div > div:first-child,
+.qitem-single:not(.qitem-double) > div:first-child
+{
+    float: left;
+    width: 100px;
+}
+
+.qitem-double > div > div:last-child,
+.qitem-single:not(.qitem-double) > div:last-child
+{
+    margin-left: 124px;
+}
+
+.qitem-double
+{
+    align-items: flex-start;
+    justify-content: center;
+    display: flex;
+}
+
+.qitem-double > div
+{
+    flex: 1;
+}
+
+.qitem-options
+{
+    padding: 18px 0 12px;
+    min-height: 300px;
+}
+
+.qitem-footer
+{
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.paper-sider
+{
+    flex: 6;
+}

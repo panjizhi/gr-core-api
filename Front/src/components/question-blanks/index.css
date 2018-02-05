@@ -1,0 +1,21 @@
+
+.qblk-answers:not(:empty):after
+{
+    content: "";
+    width: 100%;
+    height: 0;
+    clear: both;
+    display: block;
+}
+
+.qblk-answers > div
+{
+    float: left;
+    margin: 0 24px 24px 0;
+    width: 200px;
+}
+
+.qblk-answers:empty:before
+{
+    content: "无";
+}
