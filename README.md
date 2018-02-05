@@ -7,7 +7,7 @@ GR core APIs
 
 #### 编译
 前端使用 React，执行 `npm run build` 编译，输出位置见 webpack.build.config.js 中设置  
-部署时将编译后的文件 js 和 css 部分放入 assets 目录，页面部分放入 views 目录
+将编译后的文件 js 和 css 部分放入 assets 目录，页面部分放入 views 目录
 
 #### 部署
 将编译后的前端代码文件与服务器端文件合并后上传部署位置
