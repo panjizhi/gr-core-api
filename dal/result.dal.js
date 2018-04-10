@@ -180,6 +180,17 @@ module.exports = {
             });
         });
     },
+    GetSinglePaperMany: (_cid, _pid, code, count, cb) =>
+    {
+        mongodb.FindMany(COLLS.RESULT, {
+            author: _cid,
+            'paper._id': _pid,
+            code: code
+        }, {
+            sort: { created_time: -1 },
+            limit: count
+        }, cb);
+    },
     GetCandidateItems: (_cid, cb) =>
     {
         mongodb.GetCollection(COLLS.RESULT, (err, coll, cb) =>

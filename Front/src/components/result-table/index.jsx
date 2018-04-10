@@ -36,16 +36,12 @@ export default class ResultTable extends React.Component
 
     static ViewPaper(record)
     {
-        window.location.href = SetURIParams(ROUTES.PAPER_ITEM, {
-            q: record.paper
-        });
+        window.open(SetURIParams(ROUTES.PAPER_ITEM, { q: record.paper }));
     }
 
     static ViewCandidate(record)
     {
-        window.location.href = SetURIParams(ROUTES.CANDIDATE_ITEM, {
-            q: record.candidate
-        });
+        window.open(SetURIParams(ROUTES.CANDIDATE_ITEM, { q: record.candidate }));
     }
 
     static ExportResult(record)
@@ -76,7 +72,7 @@ export default class ResultTable extends React.Component
                     ) }
                 />
                 <Table.Column
-                    title="考生"
+                    title="学生"
                     dataIndex="candidate"
                     key="candidate"
                     width="16%"

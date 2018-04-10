@@ -4,7 +4,7 @@ import { Icon, LocaleProvider, message, Upload } from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
-import { INTERFACE_PREFIX } from '../../public';
+import { INTERFACE_PREFIX, DEFAULT_ERR_MESSAGE } from '../../public';
 import '../../public/index.css';
 import './index.css';
 
@@ -14,15 +14,27 @@ class Import extends React.Component
     {
         super(props);
 
-        this.state = { loading: false };
+        this.state = {
+            sections: [
+                {
+                    key: 'question',
+                    title: '上传新题生成试卷'
+                },
+                {
+                    key: 'paper',
+                    title: '上传已有题目组成试卷'
+                }
+            ]
+        };
     }
 
-    onUploadChanged(info)
+    onUploadChanged(section, info)
     {
         const { file } = info;
         if (file.status === 'uploading')
         {
-            this.setState({ loading: true });
+            section.loading = 1;
+            this.setState({});
         }
         else if (file.status === 'done')
         {
@@ -31,7 +43,8 @@ class Import extends React.Component
 
             Import.onCompleted(status);
 
-            this.setState({ loading: false });
+            delete section.loading;
+            this.setState({});
         }
         else if (file.status === 'error')
         {
@@ -39,7 +52,8 @@ class Import extends React.Component
 
             Import.onCompleted(error && error.status === 413 ? 413 : 1);
 
-            this.setState({ loading: false });
+            delete section.loading;
+            this.setState({});
         }
     }
 
@@ -51,15 +65,15 @@ class Import extends React.Component
 
         if (err)
         {
-            return message.error(statDict[err] || '上传失败，请稍后再试');
+            return message.error(statDict[err] || DEFAULT_ERR_MESSAGE);
         }
 
-        message.success('导入题目成功');
+        message.success('导入成功');
     }
 
     render()
     {
-        let { loading } = this.state;
+        let { sections } = this.state;
 
         return (
             <div>
@@ -70,24 +84,32 @@ class Import extends React.Component
                 />
                 <div className="content-layout">
                     <div className="content">
-                        <div className="content-container">
-                            <Upload
-                                className="import-container"
-                                name="picture"
-                                listType="picture-card"
-                                showUploadList={ false }
-                                action={ `${INTERFACE_PREFIX}open/upload/question` }
-                                accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                onChange={ this.onUploadChanged.bind(this) }
-                            >
-                                <div>
-                                    <Icon
-                                        className="import-icon"
-                                        type={ loading ? 'loading' : 'file-text' }
-                                    />
-                                    <div className="import-text">请选择文档</div>
-                                </div>
-                            </Upload>
+                        <div className="content-container clear-both">
+                            {
+                                sections.map(ins => (<div
+                                    className="section"
+                                    key={ ins.key }
+                                >
+                                    <Upload
+                                        className="import-container"
+                                        name="picture"
+                                        listType="picture-card"
+                                        showUploadList={ false }
+                                        action={ `${INTERFACE_PREFIX}open/upload/${ins.key}` }
+                                        accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                        onChange={ this.onUploadChanged.bind(this, ins) }
+                                        disabled={ !!ins.loading }
+                                    >
+                                        <div>
+                                            <Icon
+                                                className="import-icon"
+                                                type={ ins.loading ? 'loading' : 'file-text' }
+                                            />
+                                            <div className="import-text">{ ins.title }</div>
+                                        </div>
+                                    </Upload>
+                                </div>))
+                            }
                         </div>
                     </div>
                 </div>

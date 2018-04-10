@@ -40,6 +40,32 @@ module.exports = {
             schedule.GetMany(_paper, paper_name, _candidate, candidate_name, done, sorter, start, count, utils.DefaultCallback(cb, 1));
         }
     ],
+    GetAutoMany: [
+        utils.CheckObjectFields({
+            limit: {
+                type: 'int',
+                null: 1
+            },
+            detail: {
+                type: 'int',
+                null: 1
+            }
+        }),
+        (req, cb) =>
+        {
+            const { limit, detail } = req.body;
+            schedule.GetAutoMany(limit, detail, utils.DefaultCallback(cb, 1));
+        }
+    ],
+    GetAutoSingle: [
+        utils.CheckObjectFields({ id: 'string' }),
+        mongodb.CheckObjectID('id'),
+        (req, cb) =>
+        {
+            const { _id } = req.body;
+            schedule.GetAutoSingle(_id, utils.DefaultCallback(cb, 1));
+        }
+    ],
     SaveMany: [
         utils.CheckObjectFields({
             candidates: {
@@ -69,6 +95,25 @@ module.exports = {
             schedule.SaveMany(candidates, papers, utils.DefaultCallback(cb));
         }
     ],
+    SaveAutoSingle: [
+        utils.CheckObjectFields({
+            id: {
+                type: 'string',
+                null: 1
+            },
+            name: 'string',
+            flow: {
+                type: 'array',
+                item: 'string'
+            }
+        }),
+        mongodb.CheckObjectID('id'),
+        (req, cb) =>
+        {
+            const { _id, name, flow } = req.body;
+            schedule.SaveAutoSingle(_id, name, flow, utils.DefaultCallback(cb));
+        }
+    ],
     RemoveSingle: [
         utils.CheckObjectFields({
             id: 'string'
@@ -77,7 +122,30 @@ module.exports = {
         (req, cb) =>
         {
             const { _id } = req.body;
-            schedule.RemoveSingle(_id, utils.DefaultCallback(cb));
+            schedule.RemoveMany([_id], utils.DefaultCallback(cb));
+        }
+    ],
+    RemoveMany: [
+        utils.CheckObjectFields({
+            id: {
+                type: 'array',
+                item: 'string'
+            }
+        }),
+        mongodb.ConvertInput({ id: 1 }),
+        (req, cb) =>
+        {
+            const { id } = req.body;
+            schedule.RemoveMany(id, utils.DefaultCallback(cb));
+        }
+    ],
+    RemoveAutoSingle: [
+        utils.CheckObjectFields({ id: 'string' }),
+        mongodb.CheckObjectID('id'),
+        (req, cb) =>
+        {
+            const { _id } = req.body;
+            schedule.RemoveAutoSingle(_id, utils.DefaultCallback(cb));
         }
     ]
 };

@@ -16,7 +16,7 @@ export default class ScheduleCandidates extends React.Component
         this.state = {
             default_timestamp: defaultTime.unix(),
             loading: false,
-            count: 10,
+            count: 50,
             current: 0,
             total: 0,
             checked_dict: {},
@@ -56,7 +56,7 @@ export default class ScheduleCandidates extends React.Component
             {
                 return message.error('加载分类出现错误', undefined, () =>
                 {
-                    this.DirectReadCategories(action, cb);
+                    this.DirectReadCategories(cb);
                 });
             }
 
@@ -116,8 +116,7 @@ export default class ScheduleCandidates extends React.Component
                 key: ins._id,
                 avatar: ins.avatarUrl,
                 name: ins.name,
-                grade: ins.grade ? dict[ins.grade].name : '无',
-                class: ins.class ? dict[ins.class].name : '无',
+                classes: ins.classes ? ins.classes.map(ins => dict[ins].name).join('，') : '无',
                 registered_time: ins.createTime ? moment(ins.createTime).format('YYYY-MM-DD HH:mm:ss') : '较早之前'
             };
         });
@@ -136,7 +135,7 @@ export default class ScheduleCandidates extends React.Component
         {
             if (err)
             {
-                return message.error('加载考生出现错误', undefined, () =>
+                return message.error('加载学生出现错误', undefined, () =>
                 {
                     this.DirectReadCandidates(current, cb);
                 });
@@ -230,14 +229,14 @@ export default class ScheduleCandidates extends React.Component
                         <TreeSelect
                             allowClear
                             treeDefaultExpandAll
-                            placeholder="请选择考生分类"
+                            placeholder="请选择班级"
                             value={ category }
                             onChange={ this.onCategoryChanged.bind(this) }
                         >{ LoopSelect(tree) }</TreeSelect>
                     </div>
                     <div>
                         <Input.Search
-                            placeholder="请输入考生名称"
+                            placeholder="请输入学生名称"
                             value={ search }
                             onChange={ this.onSearchChange.bind(this) }
                             onSearch={ this.onSearchResult.bind(this) }
@@ -273,16 +272,10 @@ export default class ScheduleCandidates extends React.Component
                             width="25%"
                         />
                         <Table.Column
-                            title="年级"
-                            dataIndex="grade"
-                            key="grade"
-                            width="20%"
-                        />
-                        <Table.Column
                             title="班级"
-                            dataIndex="class"
-                            key="class"
-                            width="20%"
+                            dataIndex="classes"
+                            key="classes"
+                            width="40%"
                         />
                         <Table.Column
                             title="注册时间"

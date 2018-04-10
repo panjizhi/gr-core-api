@@ -40,24 +40,21 @@ module.exports = {
         }
     ],
     GetMany: [
-        utils.CheckServiceStruct({
-            type: 'object',
-            fields: {
-                name: {
-                    type: 'string',
-                    null: 1
-                },
-                category: {
-                    type: 'string',
-                    null: 1
-                },
-                question: {
-                    type: 'string',
-                    null: 1
-                },
-                start: 'uint',
-                count: 'uint'
-            }
+        utils.CheckObjectFields({
+            name: {
+                type: 'string',
+                null: 1
+            },
+            category: {
+                type: 'string',
+                null: 1
+            },
+            question: {
+                type: 'string',
+                null: 1
+            },
+            start: 'uint',
+            count: 'uint'
         }),
         mongodb.CheckObjectID('category', 'question'),
         (req, cb) =>
@@ -81,32 +78,34 @@ module.exports = {
         }
     ],
     SaveSingle: [
-        utils.CheckServiceStruct({
-            type: 'object',
-            fields: {
-                id: {
-                    type: 'string',
-                    null: 1
-                },
-                name: 'string',
-                category: {
-                    type: 'string',
-                    null: 1
-                },
-                questions: {
-                    type: 'array',
-                    item: 'string',
-                    null: 1
-                },
-                score: 'uint',
-                duration: 'uint'
-            }
+        utils.CheckObjectFields({
+            id: {
+                type: 'string',
+                null: 1
+            },
+            name: 'string',
+            category: {
+                type: 'string',
+                null: 1
+            },
+            questions: {
+                type: 'array',
+                item: 'string',
+                null: 1
+            },
+            score: 'uint',
+            duration: 'uint',
+            disorder: 'uint'
         }),
-        mongodb.CheckObjectID('id', 'category'),
+        mongodb.ConvertInput({
+            id: 1,
+            category: 1,
+            questions: 1
+        }),
         (req, cb) =>
         {
-            const params = req.body;
-            paper.SaveSingle(params, utils.DefaultCallback(cb));
+            const { body } = req;
+            paper.SaveSingle(body, utils.DefaultCallback(cb));
         }
     ],
     RemoveSingle: [
@@ -120,7 +119,21 @@ module.exports = {
         (req, cb) =>
         {
             const { _id } = req.body;
-            paper.RemoveSingle(_id, utils.DefaultCallback(cb));
+            paper.RemoveMany([_id], utils.DefaultCallback(cb));
+        }
+    ],
+    RemoveMany: [
+        utils.CheckObjectFields({
+            id: {
+                type: 'array',
+                item: 'string'
+            }
+        }),
+        mongodb.ConvertInput({ id: 1 }),
+        (req, cb) =>
+        {
+            const { id } = req.body;
+            paper.RemoveMany(id, utils.DefaultCallback(cb));
         }
     ]
 };

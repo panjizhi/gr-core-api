@@ -1,11 +1,11 @@
 const utils = require('../includes/utils');
 const mongodb = require('../drivers/mongodb');
-const candidate = require('../dal/candidate.dal');
+const candidateDAL = require('../dal/candidate.dal');
 
 module.exports = {
     GetCategories: (req, cb) =>
     {
-        candidate.GetCategories(utils.DefaultCallback(cb, 1));
+        candidateDAL.GetCategories(utils.DefaultCallback(cb, 1));
     },
     AddCategory: [
         utils.CheckServiceStruct({
@@ -22,7 +22,7 @@ module.exports = {
         (req, cb) =>
         {
             const { name, _parent } = req.body;
-            candidate.AddCategory(name, _parent, utils.DefaultCallback(cb));
+            candidateDAL.AddCategory(name, _parent, utils.DefaultCallback(cb));
         }
     ],
     RemoveCategory: [
@@ -36,7 +36,7 @@ module.exports = {
         (req, cb) =>
         {
             const { _id } = req.body;
-            candidate.RemoveCategory(_id, utils.DefaultCallback(cb));
+            candidateDAL.RemoveCategory(_id, utils.DefaultCallback(cb));
         }
     ],
     GetMany: [
@@ -55,7 +55,7 @@ module.exports = {
         (req, cb) =>
         {
             const { name, _category, start, count } = req.body;
-            candidate.GetMany(name, _category, start, count, utils.DefaultCallback(cb, 1));
+            candidateDAL.GetMany(name, _category, start, count, utils.DefaultCallback(cb, 1));
         }
     ],
     GetSingle: [
@@ -69,29 +69,102 @@ module.exports = {
         (req, cb) =>
         {
             const { _id } = req.body;
-            candidate.GetSingle(_id, utils.DefaultCallback(cb, 1));
+            candidateDAL.GetSingle(_id, utils.DefaultCallback(cb, 1));
         }
     ],
     SaveSingle: [
+        utils.CheckObjectFields({
+            id: 'string',
+            classes: {
+                type: 'array',
+                item: 'string',
+                empty: 1,
+                null: 1
+            }
+        }),
+        mongodb.ConvertInput({
+            id: 1,
+            classes: 1
+        }),
+        (req, cb) =>
+        {
+            const { id, classes } = req.body;
+            candidateDAL.SaveSingle(id, classes, utils.DefaultCallback(cb));
+        }
+    ],
+    RemoveMany: [
         utils.CheckServiceStruct({
             type: 'object',
             fields: {
-                id: 'string',
-                grade: {
-                    type: 'string',
-                    null: 1
-                },
-                class: {
-                    type: 'string',
-                    null: 1
+                id: {
+                    type: 'array',
+                    item: 'string'
                 }
             }
         }),
-        mongodb.CheckObjectID('id', 'grade', 'class'),
+        mongodb.ConvertInput({ id: 1 }),
         (req, cb) =>
         {
-            const params = req.body;
-            candidate.SaveSingle(params, utils.DefaultCallback(cb));
+            const { id } = req.body;
+            candidateDAL.RemoveMany(id, utils.DefaultCallback(cb));
+        }
+    ],
+    SaveClassesMany: [
+        utils.CheckObjectFields({
+            candidates: {
+                type: 'array',
+                item: 'string'
+            },
+            classes: {
+                type: 'array',
+                item: 'string'
+            }
+        }),
+        mongodb.ConvertInput({
+            candidates: 1,
+            classes: 1
+        }),
+        (req, cb) =>
+        {
+            const { candidates, classes } = req.body;
+            candidateDAL.SaveClassesMany(candidates, classes, utils.DefaultCallback(cb));
+        }
+    ],
+    GetCalendar: [
+        utils.CheckObjectFields({
+            candidate: 'string',
+            begin: 'int',
+            end: 'int'
+        }),
+        mongodb.ConvertInput({ candidate: 1 }),
+        (req, cb) =>
+        {
+            const { candidate, begin, end } = req.body;
+            candidateDAL.GetCalendar(candidate, begin, end, utils.DefaultCallback(cb, 1));
+        }
+    ],
+    GetDateReport: [
+        utils.CheckObjectFields({
+            candidate: 'string',
+            date: 'int'
+        }),
+        mongodb.ConvertInput({ candidate: 1 }),
+        (req, cb) =>
+        {
+            const { candidate, date } = req.body;
+            candidateDAL.GetDateReport(candidate, date, utils.DefaultCallback(cb, 1));
+        }
+    ],
+    GetClassReport: [
+        utils.CheckObjectFields({
+            _class: 'string',
+            date: 'int'
+        }),
+        mongodb.ConvertInput({ _class: 1 }),
+        (req, cb) =>
+        {
+            const { _class, date } = req.body;
+            candidateDAL.GetClassReport(_class, date, utils.DefaultCallback(cb, 1));
         }
     ]
 };

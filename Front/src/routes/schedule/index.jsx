@@ -5,6 +5,7 @@ import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
 import SchedulePapers from '../../components/schedule-papers';
+import ScheduleAutoPapers from '../../components/schedule-auto-papers';
 import ScheduleCandidates from '../../components/schedule-candidates';
 import { AsyncRequest, ROUTES } from '../../public';
 import '../../public/index.css';
@@ -17,7 +18,8 @@ class Schedule extends React.Component
         super(props);
 
         this.state = {
-            submitting: false
+            submitting: false,
+            source: 'manual'
         };
     }
 
@@ -39,12 +41,12 @@ class Schedule extends React.Component
         const candidates = Object.values(candidate_dict);
         if (!papers.length || !candidates.length)
         {
-            return message.warning('请选择试卷和考生');
+            return message.warning('请选择试卷和学生');
         }
 
-        this.setState({
-            submitting: true
-        });
+        console.log(papers);
+
+        this.setState({ submitting: true });
 
         const pdt = {
             candidates: candidates,
@@ -62,25 +64,44 @@ class Schedule extends React.Component
                 });
             }
 
-            message.success('发布成功', () => window.location.href = ROUTES.SCHEDULES);
+            message.success('发布成功', () => window.location.reload());
+        });
+    }
+
+    onSourceChange(value)
+    {
+        this.setState({
+            source: value,
+            paper_dict: null
         });
     }
 
     render()
     {
-        const { submitting } = this.state;
+        const { source, submitting } = this.state;
 
         return (
             <div>
                 <Title />
                 <Nav
-                    open="candidates"
-                    selected="results"
+                    open="schedules"
+                    selected="schedule"
                 />
                 <div className="content-layout">
                     <div className="content">
                         <div className="content-container">
-                            <SchedulePapers onChecked={ this.onPaperChecked.bind(this) } />
+                            {
+                                ({
+                                    manual: (<SchedulePapers
+                                        onChecked={ this.onPaperChecked.bind(this) }
+                                        onSourceChange={ this.onSourceChange.bind(this) }
+                                    />),
+                                    auto: (<ScheduleAutoPapers
+                                        onChecked={ this.onPaperChecked.bind(this) }
+                                        onSourceChange={ this.onSourceChange.bind(this) }
+                                    />)
+                                })[source]
+                            }
                             <ScheduleCandidates onChecked={ this.onCandidateChecked.bind(this) } />
                         </div>
                         <Divider />

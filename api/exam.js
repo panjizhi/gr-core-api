@@ -94,6 +94,10 @@ module.exports = {
                 paper: (cb) =>
                 {
                     paper.GetSingle(_examId, cb);
+                },
+                sch: (cb) =>
+                {
+                    schedule.GetSingle(_dispatchId, cb);
                 }
             }, (err, dat) =>
             {
@@ -102,7 +106,11 @@ module.exports = {
                     return cb(1, err);
                 }
 
-                const { paper } = dat;
+                const { paper, sch } = dat;
+                if (sch.isDone)
+                {
+                    return cb(0, { score: sch.score });
+                }
 
                 let score = 0;
                 const ansArr = [];
@@ -122,31 +130,34 @@ module.exports = {
                     const { qtype, content } = qus;
 
                     const func = [
-                        () => val === content.right,
+                        () => val === content.right ? qus.score : 0,
                         () =>
                         {
+                            let score = 0;
+
                             if (!common.CompareType(val, 'array'))
                             {
-                                return false;
+                                return score;
                             }
 
                             const count = content.count;
                             if (val.length < count || content.answers.length < count)
                             {
-                                return false;
+                                return score;
                             }
 
+                            const unit = qus.score / count;
                             for (let i = 0, l = count; i < l; ++i)
                             {
                                 const rg = content.answers[i];
                                 const ans = val[i];
-                                if (ans !== rg)
+                                if (ans === rg)
                                 {
-                                    return false;
+                                    score += unit;
                                 }
                             }
 
-                            return true;
+                            return score;
                         }
                     ][qtype];
                     if (!func)
@@ -154,36 +165,40 @@ module.exports = {
                         return true;
                     }
 
-                    const right = func();
-                    if (right)
+                    const qsc = func();
+                    if (qsc)
                     {
-                        score += qus.score;
+                        score += qsc;
                     }
 
                     ansArr.push({
                         question: qus._id,
                         answer: val,
-                        right: right ? 1 : 0
+                        right: qsc < qus.score ? 0 : 1
                     });
                 });
 
                 const duration = ntsmp - start_time;
+                const rdoc = {
+                    author: _userId,
+                    paper: paper,
+                    schedule: _dispatchId,
+                    score,
+                    begin_time: start_time,
+                    end_time: ntsmp,
+                    duration,
+                    answers: ansArr,
+                    created_time: ntsmp,
+                    updated_time: ntsmp
+                };
+                if (sch.auto)
+                {
+                    rdoc.auto = sch.auto;
+                    rdoc.code = sch.code;
+                }
+
                 async.auto({
-                    result: (cb) =>
-                    {
-                        result.SaveSingle({
-                            author: _userId,
-                            paper: paper,
-                            schedule: _dispatchId,
-                            score,
-                            begin_time: start_time,
-                            end_time: ntsmp,
-                            duration,
-                            answers: ansArr,
-                            created_time: ntsmp,
-                            updated_time: ntsmp
-                        }, cb);
-                    },
+                    result: (cb) => result.SaveSingle(rdoc, cb),
                     schedule: [
                         'result',
                         ({ result }, cb) =>
@@ -193,11 +208,20 @@ module.exports = {
                     ],
                     questions: (cb) =>
                     {
-                        async.eachLimit(ansArr, 10, (ins, cb) =>
+                        async.eachLimit(ansArr, 10, (ins, cb) => question.UpdateSingle(ins.question, ins.right ? 0 : 1, ntsmp, cb), cb);
+                    },
+                    auto: [
+                        'result',
+                        ({ result }, cb) =>
                         {
-                            question.UpdateSingle(ins.question, ins.right ? 0 : 1, ntsmp, cb);
-                        }, cb);
-                    }
+                            if (!sch.auto)
+                            {
+                                return cb();
+                            }
+
+                            schedule.SaveAutoQueueSingle(sch.auto, rdoc, ntsmp, cb);
+                        }
+                    ]
                 }, (err) =>
                 {
                     if (err)

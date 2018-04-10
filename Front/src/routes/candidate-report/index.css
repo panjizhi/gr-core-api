@@ -1,0 +1,150 @@
+.content
+{
+    display: flex;
+}
+
+.sidebar
+{
+    flex: 16 !important;
+}
+
+.candidates
+{
+    flex: 2;
+}
+
+.report
+{
+    flex: 3;
+}
+
+.content > div:not(:first-child)
+{
+    margin-left: 24px;
+}
+
+.sch-selector
+{
+    margin-bottom: 24px;
+    padding: 0 12px;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.sch-selector > *
+{
+    flex: 1;
+}
+
+.sch-selector > *:not(:first-child)
+{
+    margin-left: 24px;
+}
+
+.sch-selector > * > *
+{
+    width: 100%;
+}
+
+.cdd-item
+{
+    margin-bottom: 2px;
+    box-sizing: content-box !important;
+    padding: 12px 24px;
+    height: 52px;
+    transition: all .3s;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.cdd-item:hover,
+.cdd-item.checked
+{
+    background: #e6f7ff;
+}
+
+.cdd-item.checked
+{
+    border-left: solid 3px #1890ff;
+}
+
+.cdd-avatar
+{
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.cdd-avatar > img
+{
+    width: 100%;
+    height: 100%;
+}
+
+.cdd-detail
+{
+    margin-left: 16px;
+    line-height: 26px;
+    flex: 1;
+}
+
+.cdd-detail > div
+{
+    justify-content: flex-start;
+    align-items: center;
+    display: flex;
+}
+
+.cdd-detail > div > div:not(:first-child)
+{
+    margin-left: 16px;
+}
+
+.cdd-light
+{
+    color: #bfbfbf;
+}
+
+.sch-pagination
+{
+    margin-top: 24px;
+    padding: 0 4px 0 24px;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.qtbl-pagination
+{
+    justify-content: flex-end;
+    align-items: flex-end;
+    display: flex;
+    flex: 1;
+}
+
+.cal-cell-fill
+{
+    height: 100%;
+    background: #f5f5f5;
+}
+
+.cal-cell-fill.highlight
+{
+    background: #ffbb96;
+}
+
+.report > div:not(:first-child)
+{
+    margin-top: 24px;
+}
+
+.report-single > div:first-child
+{
+    margin-bottom: 24px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 600;
+}

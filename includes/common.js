@@ -23,7 +23,7 @@ module.exports = {
             r2 = 0;
         }
         m = Math.pow(10, Math.max(r1, r2));
-        return _this.FloatDiv(_this.FloatMul(arg1, m) + _this.FloatMul(arg2, m), m);
+        return module.exports.FloatDiv(module.exports.FloatMul(arg1, m) + module.exports.FloatMul(arg2, m), m);
     },
     FloatSub: (arg1, arg2) =>
     {
@@ -49,7 +49,7 @@ module.exports = {
         m = Math.pow(10, Math.max(r1, r2));
         //动态控制精度长度
         n = (r1 >= r2) ? r1 : r2;
-        return parseFloat(_this.FloatDiv((_this.FloatMul(arg1, m) - _this.FloatMul(arg2, m)), m).toFixed(n));
+        return parseFloat(module.exports.FloatDiv((module.exports.FloatMul(arg1, m) - module.exports.FloatMul(arg2, m)), m).toFixed(n));
     },
     FloatMul: (arg1, arg2) =>
     {
@@ -101,7 +101,7 @@ module.exports = {
     FloatKeepDecimal: (arg1, digit) =>
     {
         let base = Math.pow(10, digit);
-        return _this.FloatDiv(Math.ceil(_this.FloatMul(arg1, base)), base);
+        return module.exports.FloatDiv(Math.ceil(module.exports.FloatMul(arg1, base)), base);
     },
     GetURIParams: (uri) =>
     {
@@ -155,7 +155,7 @@ module.exports = {
             note = uri.substring(sidx + 1);
         }
 
-        let pinstc = _this.GetURIParams(uri);
+        let pinstc = module.exports.GetURIParams(uri);
 
         for (let itm in params)
         {
@@ -215,15 +215,15 @@ module.exports = {
     },
     CompareType: (value, type) =>
     {
-        return _this.GetType(value) === type.toLowerCase();
+        return module.exports.GetType(value) === type.toLowerCase();
     },
     IsUndefined: (value) =>
     {
-        return _this.CompareType(value, 'undefined');
+        return module.exports.CompareType(value, 'undefined');
     },
     Extend: (dest, source, skip) =>
     {
-        if (!_this.CompareType(dest, 'object') || !_this.CompareType(source, 'object'))
+        if (!module.exports.CompareType(dest, 'object') || !module.exports.CompareType(source, 'object'))
         {
             return skip && !(typeof dest === 'undefined' || dest === null) ? dest : source;
         }
@@ -235,7 +235,7 @@ module.exports = {
                 continue;
             }
 
-            dest[key] = _this.Extend(dest[key], source[key], skip);
+            dest[key] = module.exports.Extend(dest[key], source[key], skip);
         }
 
         return dest;
@@ -244,7 +244,7 @@ module.exports = {
     {
         link = link || [];
 
-        if (_this.CompareType(contrast, 'string'))
+        if (module.exports.CompareType(contrast, 'string'))
         {
             contrast = {
                 type: contrast
@@ -266,7 +266,7 @@ module.exports = {
 
             link.push(exType);
 
-            let valType = _this.GetType(struct);
+            let valType = module.exports.GetType(struct);
             switch (valType)
             {
                 case 'boolean':
@@ -335,7 +335,7 @@ module.exports = {
                         {
                             link.push(i);
 
-                            if (_this.CheckStruct(struct[i], exItem, link))
+                            if (module.exports.CheckStruct(struct[i], exItem, link))
                             {
                                 return 1;
                             }
@@ -370,7 +370,7 @@ module.exports = {
                             let prop = struct[name];
                             if (prop !== null && prop !== undefined)
                             {
-                                if (_this.CheckStruct(prop, value, link))
+                                if (module.exports.CheckStruct(prop, value, link))
                                 {
                                     return 1;
                                 }
@@ -401,7 +401,7 @@ module.exports = {
                                 link.push(k);
 
                                 let v = struct[k];
-                                if (_this.CheckStruct(v, exItem, link))
+                                if (module.exports.CheckStruct(v, exItem, link))
                                 {
                                     return 1;
                                 }
@@ -447,7 +447,7 @@ module.exports = {
     },
     ImplodeRecursive: (struct) =>
     {
-        let t = _this.GetType(struct);
+        let t = module.exports.GetType(struct);
         switch (t)
         {
             case 'null':
@@ -478,14 +478,14 @@ module.exports = {
                     varr.push(struct[karr[i]]);
                 }
 
-                return _this.ImplodeRecursive(varr);
+                return module.exports.ImplodeRecursive(varr);
             }
             case 'array':
             {
                 let varr = [];
                 for (let i = 0, l = struct.length; i < l; ++i)
                 {
-                    varr.push(_this.ImplodeRecursive(struct[i]));
+                    varr.push(module.exports.ImplodeRecursive(struct[i]));
                 }
 
                 return varr.join('');
@@ -495,5 +495,3 @@ module.exports = {
         }
     }
 };
-
-const _this = module.exports;

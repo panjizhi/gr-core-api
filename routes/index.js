@@ -11,5 +11,9 @@ module.exports = {
     'schedule': (req, cb) => cb(),
     'schedules': (req, cb) => cb(),
     'setting': (req, cb) => cb(),
-    'import': (req, cb) => cb()
+    'import': (req, cb) => cb(),
+    'auto-schedules': (req, cb) => cb(),
+    'auto-schedule-item': (req, cb) => cb(),
+    'candidate-report': (req, cb) => cb(),
+    'class-report': (req, cb) => cb()
 };

@@ -13,42 +13,6 @@ const routes = [
     'exam'
 ];
 
-router.use((req, res, next) =>
-{
-    res.apiResponse = (data) =>
-    {
-        if (req.query.callback)
-        {
-            res.jsonp(data);
-        }
-        else
-        {
-            res.json(data);
-        }
-    };
-
-    res.apiError = (key, err, msg, code) =>
-    {
-        msg = msg || 'Error';
-        key = key || 'unknown error';
-        msg += ' (' + key + ')';
-        res.status(code || 500);
-        res.apiResponse({ error: key || 'error', detail: err });
-    };
-
-    res.apiNotFound = (err, msg) =>
-    {
-        res.apiError('data not found', err, msg || 'not found', 404);
-    };
-
-    res.apiNotAllowed = (err, msg) =>
-    {
-        res.apiError('access not allowed', err, msg || 'not allowed', 403);
-    };
-
-    next();
-});
-
 const parser = bodyParser.json({
     limit: '512kb',
     type: () => 1

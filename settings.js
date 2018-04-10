@@ -71,15 +71,15 @@ const platform = {
     release: {
         server: {
             protocol: 'http',
-            port: 1001
+            port: 3000
         },
         console: {
-            host: 'dev.gerun.mobi',
+            host: 'gerun.mobi',
             path: ''
         },
         cdn: {
             protocol: 'https',
-            host: 'dev.gerun.mobi',
+            host: 'gerun.mobi',
             path: '',
             assets: {
                 path: ''

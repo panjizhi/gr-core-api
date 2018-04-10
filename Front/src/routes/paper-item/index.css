@@ -32,6 +32,7 @@
 
 .pitem-split
 {
+    margin-bottom: 24px;
     min-height: 560px;
     align-items: flex-start;
     justify-content: center;

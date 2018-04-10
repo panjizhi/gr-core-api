@@ -1,6 +1,5 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');
 const _ = require('underscore');
 const moment = require('moment');
 const common = require('./includes/common');
@@ -24,10 +23,7 @@ module.exports = (dir, routes, options, before) =>
         next();
     });
 
-    router.use(cors({
-        origin: 'http://192.168.1.9:8080',
-        credentials: true
-    }));
+    before && before(router);
 
     const parser = bodyParser.json({
         limit: '512kb',
@@ -46,8 +42,6 @@ module.exports = (dir, routes, options, before) =>
             next();
         });
     });
-
-    before && before(router);
 
     routes.forEach(unit =>
     {

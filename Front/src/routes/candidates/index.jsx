@@ -1,14 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Input, LocaleProvider, message, Pagination } from 'antd';
+import { Button, Icon, Input, LocaleProvider, message, Pagination, Popconfirm, Table, TreeSelect } from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import moment from 'moment';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
 import Categories from '../../components/categories';
 import CategoryAppend from '../../components/category-append';
-import CandidateTable from '../../components/candidate-table';
-import { AsyncRequest, IsUndefined } from '../../public';
+import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, ROUTES, SetURIParams } from '../../public';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -23,7 +22,10 @@ class Candidates extends React.Component
             loading: false,
             current: 0,
             count: 8,
-            total: 0
+            total: 0,
+            checked_dict: {},
+            joining: false,
+            removing: false
         };
     }
 
@@ -115,7 +117,8 @@ class Candidates extends React.Component
                 loading: false,
                 current: current,
                 total: total,
-                records: rcds
+                records: rcds,
+                selected_keys: undefined
             });
         });
     }
@@ -133,7 +136,7 @@ class Candidates extends React.Component
         {
             if (err)
             {
-                return message.error('加载考生出现错误', undefined, () =>
+                return message.error('加载学生出现错误', undefined, () =>
                 {
                     this.DirectReadCandidates(current, cb);
                 });
@@ -152,8 +155,7 @@ class Candidates extends React.Component
                 key: ins._id,
                 avatar: ins.avatarUrl,
                 name: ins.name,
-                grade: ins.grade ? dict[ins.grade].name : '无',
-                class: ins.class ? dict[ins.class].name : '无',
+                classes: ins.classes ? ins.classes.map(ins => dict[ins].name).join('，') : '无',
                 openid: ins.openid,
                 created_time: ins.createTime ? moment(ins.createTime).format('YYYY-MM-DD HH:mm:ss') : '较早之前'
             };
@@ -228,9 +230,104 @@ class Candidates extends React.Component
         this.ReadCandidates(page - 1);
     }
 
+    onChecked(selectedRowKeys)
+    {
+        this.setState({ selected_keys: selectedRowKeys });
+    }
+
+    onClassesChange(classes)
+    {
+        this.setState({ classes });
+    }
+
+    static ViewCandidate(record)
+    {
+        window.open(SetURIParams(ROUTES.CANDIDATE_ITEM, { q: record.id }));
+    }
+
+    onJoinClasses()
+    {
+        const { current, selected_keys, classes } = this.state;
+        if (!selected_keys || !selected_keys.length || !classes || !classes.length)
+        {
+            return;
+        }
+
+        this.setState({ joining: true });
+
+        const pdt = {
+            candidates: selected_keys,
+            classes
+        };
+        AsyncRequest('candidate/SaveClassesMany', pdt, (err, dat) =>
+        {
+            if (err)
+            {
+                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.setState({ joining: false }));
+            }
+
+            message.success('加入成功');
+            this.ReadCandidates(current);
+
+            this.setState({
+                selected_keys: undefined,
+                classes: undefined,
+                joining: false
+            });
+        });
+    }
+
+    onRemove(record)
+    {
+        this.DirectRemove([record.id]);
+    }
+
+    onMultiRemove()
+    {
+        const { selected_keys } = this.state;
+        this.DirectRemove(selected_keys);
+    }
+
+    DirectRemove(idArr)
+    {
+        this.setState({ removing: true });
+
+        const pdt = { id: idArr };
+        AsyncRequest('candidate/RemoveMany', pdt, (err) =>
+        {
+            if (err)
+            {
+                return message.error(DEFAULT_ERR_MESSAGE);
+            }
+
+            message.success('删除成功');
+
+            const { current } = this.state;
+            this.ReadCandidates(current);
+
+            this.setState({
+                selected_keys: undefined,
+                classes: undefined,
+                removing: false
+            });
+        });
+    }
+
     render()
     {
-        const { loading, tree, category, search, records, current, count, total } = this.state;
+        const { loading, tree, category, search, records, current, count, total, selected_keys, classes, joining, removing } = this.state;
+
+        const LoopSelect = (dat) => !dat || !dat.length ?
+            null :
+            dat.map(ins => <TreeSelect.TreeNode
+                value={ ins.id }
+                title={ ins.name }
+                key={ ins.id }
+            >
+                {
+                    LoopSelect(ins.children)
+                }
+            </TreeSelect.TreeNode>);
 
         return (
             <div>
@@ -263,7 +360,7 @@ class Candidates extends React.Component
                         <div className="qtbl-search">
                             <Input.Search
                                 value={ search }
-                                placeholder="请输入要搜索的考生名称"
+                                placeholder="请输入要搜索的学生名称"
                                 onChange={ this.onSearchChange.bind(this) }
                                 onSearch={ this.onSearchCandidate.bind(this) }
                                 style={ {
@@ -271,11 +368,127 @@ class Candidates extends React.Component
                                 } }
                             />
                         </div>
-                        <CandidateTable
-                            loading={ loading }
-                            value={ records }
-                        />
+                        <div>
+                            <Table
+                                loading={ loading }
+                                dataSource={ records }
+                                pagination={ false }
+                                rowSelection={ {
+                                    selectedRowKeys: selected_keys,
+                                    onChange: this.onChecked.bind(this)
+                                } }
+                            >
+                                <Table.Column
+                                    title={ null }
+                                    className="ctbl-avatar-box"
+                                    dataIndex="avatar"
+                                    key="avatar"
+                                    width="10%"
+                                    render={ (text, record) => (
+                                        <div
+                                            className="ctbl-avatar"
+                                            onClick={ Candidates.ViewCandidate.bind(this, record) }
+                                        >
+                                            <img className="ctbl-avatar" src={ record.avatar } />
+                                        </div>
+                                    ) }
+                                />
+                                <Table.Column
+                                    title="姓名"
+                                    dataIndex="name"
+                                    key="name"
+                                    width="15%"
+                                    render={ (text, record) => (
+                                        <div onClick={ Candidates.ViewCandidate.bind(this, record) }>
+                                            <a href="#">{ record.name }</a>
+                                        </div>
+                                    ) }
+                                />
+                                <Table.Column
+                                    title="班级"
+                                    dataIndex="classes"
+                                    key="classes"
+                                    width="25%"
+                                />
+                                <Table.Column
+                                    title="OPENID"
+                                    dataIndex="openid"
+                                    key="openid"
+                                    width="25%"
+                                />
+                                <Table.Column
+                                    title="注册时间"
+                                    dataIndex="created_time"
+                                    key="created_time"
+                                    width="15%"
+                                />
+                                <Table.Column
+                                    title="操作"
+                                    key="action"
+                                    width="10%"
+                                    render={ (text, record) => (
+                                        <div>
+                                            <Popconfirm
+                                                placement="topRight"
+                                                title={ '是否删除此位用户？' }
+                                                onConfirm={ this.onRemove.bind(this, record) }
+                                                okText="删除"
+                                                cancelText="取消"
+                                            >
+                                                <Icon type="delete" size="small" />
+                                            </Popconfirm>
+                                        </div>
+                                    ) }
+                                />
+                            </Table>
+                        </div>
                         <div className="qtbl-footer">
+                            {
+                                selected_keys && selected_keys.length ?
+                                    (<div className="cdd-classes">
+                                        <div>
+                                            <TreeSelect
+                                                style={ {
+                                                    width: '300px'
+                                                } }
+                                                placeholder={ `请选择这些学生要加入的班级` }
+                                                allowClear
+                                                multiple
+                                                treeDefaultExpandAll
+                                                value={ classes }
+                                                onChange={ this.onClassesChange.bind(this) }
+                                            >
+                                                {
+                                                    LoopSelect(tree)
+                                                }
+                                            </TreeSelect>
+                                        </div>
+                                        <div>
+                                            <Button
+                                                type="primary"
+                                                icon="plus"
+                                                loading={ joining }
+                                                disabled={ !(classes && classes.length) }
+                                                onClick={ this.onJoinClasses.bind(this) }
+                                            >加入</Button>
+                                        </div>
+                                        <div>
+                                            <Popconfirm
+                                                placement="topLeft"
+                                                title={ '是否删选中用户？' }
+                                                onConfirm={ this.onMultiRemove.bind(this) }
+                                                okText="删除"
+                                                cancelText="取消"
+                                            >
+                                                <Button
+                                                    icon="delete"
+                                                    loading={ removing }
+                                                >删除</Button>
+                                            </Popconfirm>
+                                        </div>
+                                    </div>) :
+                                    null
+                            }
                             <div className="qtbl-pagination">
                                 <Pagination
                                     current={ current + 1 }

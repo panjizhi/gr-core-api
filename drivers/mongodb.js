@@ -1,5 +1,6 @@
 const mongodb = require('mongodb');
 const settings = require('../settings');
+const common = require('../includes/common');
 const utils = require('../includes/utils');
 const async = require('../includes/workflow');
 
@@ -107,7 +108,7 @@ module.exports = {
     },
     FindOne: (coll, query, options, cb) =>
     {
-        if (!cb)
+        if (!cb && typeof options === 'function')
         {
             cb = options;
             options = null;
@@ -131,6 +132,26 @@ module.exports = {
             })
         }, cb);
     },
+    FindMany: (coll, query, options, cb) =>
+    {
+        if (!cb)
+        {
+            cb = options;
+            options = null;
+        }
+
+        module.exports.GetCollection(coll, (err, coll, cb) =>
+        {
+            coll.find(query, options).toArray(cb);
+        }, cb);
+    },
+    Distinct: (coll, key, query, cb) =>
+    {
+        module.exports.GetCollection(coll, (err, coll, cb) =>
+        {
+            coll.distinct(key, query || {}, cb);
+        }, cb);
+    },
     InsertOne: (coll, doc, cb) =>
     {
         module.exports.GetCollection(coll, (err, coll, cb) =>
@@ -148,23 +169,38 @@ module.exports = {
     },
     UpdateOne: (coll, filter, set, unset, upsert, cb) =>
     {
-        module.exports.GetCollection(coll, (err, coll, cb) =>
-        {
-            const opr = {};
-            set && (opr['$set'] = set);
-            unset && (opr['$unset'] = unset);
-
-            coll.updateOne(filter || {}, opr, { upsert: !!upsert }, (err) =>
-            {
-                if (err)
-                {
-                    return cb(err);
-                }
-
-                cb();
-            })
-        }, cb);
+        const update = {};
+        set && (update['$set'] = set);
+        unset && (update['$unset'] = unset);
+        module.exports.UpdateSingle(coll, filter, update, { upsert: !!upsert }, cb);
     },
+    UpdateSingle: (coll, filter, update, options, cb) =>
+    {
+        if (!cb && typeof options === 'function')
+        {
+            cb = options;
+            options = null;
+        }
+
+        if (!options)
+        {
+            options = {};
+        }
+        if (typeof options.upsert === 'undefined')
+        {
+            options.upsert = false;
+        }
+
+        module.exports.GetCollection(coll, (err, coll, cb) => coll.updateOne(filter, update, options, cb), (err) =>
+        {
+            err ? cb(err) : cb();
+        });
+    },
+    UpdateMany: (coll, filter, update, cb) =>
+    {
+        module.exports.GetCollection(coll, (err, coll, cb) => coll.updateMany(filter || {}, update, cb), cb);
+    },
+    Remove: (coll, filter, cb) => module.exports.GetCollection(coll, (err, coll, cb) => coll.remove(filter, cb), cb),
     CheckObjectID: (...names) =>
     {
         const fields = {};
@@ -201,9 +237,110 @@ module.exports = {
                         return true;
                     });
 
-                    cb(vaild ? null : 'ObjectID invalid.');
+                    cb(vaild ? 0 : 1);
                 }
             ], cb);
         };
+    },
+    ConvertInput: (contrast) =>
+    {
+        return (req, cb) =>
+        {
+            const { body } = req;
+            cb(module.exports.Convert(body, contrast));
+        };
+    },
+    Convert: (struct, contrast) =>
+    {
+        function DirectCheck(struct)
+        {
+            for (const key in contrast)
+            {
+                if (!contrast.hasOwnProperty(key))
+                {
+                    continue;
+                }
+
+                const cval = contrast[key];
+                const value = struct[key];
+                if (common.CompareType(cval, 'object'))
+                {
+                    return module.exports.Convert(value, cval);
+                }
+
+                if (!cval)
+                {
+                    continue;
+                }
+
+                const vtype = common.GetType(value);
+                switch (vtype)
+                {
+                    case 'undefined':
+                    case 'null':
+                        continue;
+                    case 'string':
+                    {
+                        const oid = module.exports.CreateObjectID(value);
+                        if (!oid)
+                        {
+                            return 1;
+                        }
+
+                        struct[key] = oid;
+                        break;
+                    }
+                    case 'array':
+                    {
+                        for (let i = 0, l = value.length; i < l; ++i)
+                        {
+                            const oid = module.exports.CreateObjectID(value[i]);
+                            if (!oid)
+                            {
+                                return 1;
+                            }
+
+                            value[i] = oid;
+                        }
+
+                        break;
+                    }
+                    default:
+                        return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        const stype = common.GetType(struct);
+        switch (stype)
+        {
+            case 'object':
+            {
+                if (DirectCheck(struct))
+                {
+                    return 1;
+                }
+
+                break;
+            }
+            case 'array':
+            {
+                for (let i = 0, l = struct.length; i < l; ++i)
+                {
+                    if (DirectCheck(struct[i]))
+                    {
+                        return 1;
+                    }
+                }
+
+                break;
+            }
+            default:
+                return 1;
+        }
+
+        return 0;
     }
 };

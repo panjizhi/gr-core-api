@@ -4,6 +4,7 @@ const common = require('../includes/common');
 const async = require('../includes/workflow');
 const mongodb = require('../drivers/mongodb');
 const category = require('../dal/category.dal');
+const notification = require('../dal/notification');
 
 module.exports = {
     GetCategories: (cb) =>
@@ -138,31 +139,84 @@ module.exports = {
             }, cb);
         }, cb);
     },
+    GetNameMany: (name, count, cb) =>
+    {
+        mongodb.Distinct(COLLS.QUESTION, 'name', {
+            name: {
+                $regex: name,
+                $options: 'i'
+            }
+        }, (err, dat) =>
+        {
+            if (err)
+            {
+                return cb(err);
+            }
+
+            if (dat.length > count)
+            {
+                dat = dat.slice(0, count);
+            }
+
+            cb(null, dat);
+        });
+    },
+    QueryRadio: (name, cb) =>
+    {
+        mongodb.FindOne(COLLS.QUESTION, {
+            qtype: 0,
+            name
+        }, cb);
+    },
+    QueryBlank: (name, desc, cb) =>
+    {
+        mongodb.FindOne(COLLS.QUESTION, {
+            qtype: 1,
+            name,
+            'content.text': desc
+        }, cb);
+    },
     SaveSingle: (doc, cb) =>
     {
+        if (doc.id)
+        {
+            doc._id = doc.id;
+            delete doc.id;
+        }
+
         let update = 0;
         if (doc._id)
         {
-            delete doc.id;
             update = 1;
         }
 
-        if (doc._subject)
-        {
-            doc.subject = doc._subject;
-            delete doc._subject;
-        }
-
-        if (doc.knowledges && doc.knowledges.length)
-        {
-            doc.knowledges = mongodb.CreateObjectIDArr(doc.knowledges);
-        }
-
         const ntsmp = moment().unix();
-        doc.created_time = ntsmp;
+        if (!update)
+        {
+            doc.created_time = ntsmp;
+        }
         doc.updated_time = ntsmp;
 
-        update ? mongodb.UpdateOne(COLLS.QUESTION, { _id: doc._id }, doc, null, 1, cb) : mongodb.InsertOne(COLLS.QUESTION, doc, cb);
+        if (update)
+        {
+            async.auto({
+                update: (cb) =>
+                {
+                    mongodb.UpdateSingle(COLLS.QUESTION, { _id: doc._id }, { $set: doc }, { upsert: true }, cb);
+                },
+                notice: [
+                    'update',
+                    (dat, cb) =>
+                    {
+                        notification.Trigger('AfterUpdateQuestion', doc._id, cb);
+                    }
+                ]
+            }, cb);
+        }
+        else
+        {
+            mongodb.InsertOne(COLLS.QUESTION, doc, cb);
+        }
     },
     SaveMany: (arr, cb) =>
     {
@@ -174,40 +228,24 @@ module.exports = {
             coll.insertMany(arr, cb);
         }, cb);
     },
-    RemoveSingle: (_id, cb) =>
+    RemoveMany: (idArr, cb) =>
     {
-        const ntsmp = moment().unix();
-        async.auto({
-            papers: (cb) =>
-            {
-                mongodb.GetCollection(COLLS.PAPER, (err, coll, cb) =>
-                {
-                    coll.updateMany({
-                        questions: _id
-                    }, {
-                        $pull: {
-                            questions: _id
-                        },
-                        $set: {
-                            updated_time: ntsmp
-                        }
-                    }, cb);
-                }, cb);
-            }
-        }, (err) =>
+        async.eachLimit(idArr, 10, (ins, cb) =>
         {
-            if (err)
-            {
-                return cb(err);
-            }
-
-            mongodb.GetCollection(COLLS.QUESTION, (err, coll, cb) =>
-            {
-                coll.remove({
-                    _id: _id
-                }, cb);
+            async.auto({
+                notice: (cb) =>
+                {
+                    notification.Trigger('BeforeRemoveQuestion', ins, cb);
+                },
+                remove: [
+                    'notice',
+                    (dat, cb) =>
+                    {
+                        mongodb.Remove(COLLS.QUESTION, { _id: ins }, cb);
+                    }
+                ]
             }, cb);
-        });
+        }, () => cb());
     },
     UpdateSingle: (_id, isWrong, time, cb) =>
     {

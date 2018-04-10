@@ -1,0 +1,70 @@
+
+.no-data
+{
+    height: 70px;
+    background: #f2f4f5;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+}
+
+.no-data > div:not(:first-child)
+{
+    margin-left: 16px;
+}
+
+.flow-container::after
+{
+    content: "";
+    width: 100%;
+    height: 0;
+    clear: both;
+    display: block;
+}
+
+.flow-block
+{
+    float: left;
+    margin: 0 24px 24px 0;
+    width: 480px;
+    background: #fff;
+}
+
+.flow-name
+{
+    box-sizing: content-box;
+    padding: 0 16px 16px 16px;
+    border-bottom: solid 1px #e8e8e8;
+    justify-content: flex-start;
+    align-items: center;
+    display: flex;
+}
+
+.flow-name > div:first-child
+{
+    margin-right: 16px;
+    flex: 1;
+}
+
+.flow-name > div:last-child
+{
+    transition: all .3s;
+    opacity: 0;
+}
+
+.flow-block:hover > .flow-name > div:last-child
+{
+    opacity: 1;
+}
+
+.flow-content
+{
+    margin-top: 18px;
+    padding: 0 16px;
+    overflow: hidden;
+}
+
+.content-bottom
+{
+    margin-top: 24px;
+}

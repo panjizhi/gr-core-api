@@ -17,7 +17,7 @@ export default class CandidateResults extends React.Component
             id: this.props.value,
             loading: false,
             current: 0,
-            count: 10,
+            count: 50,
             total: 0
         };
     }
@@ -139,9 +139,7 @@ export default class CandidateResults extends React.Component
 
     static ViewPaper(record)
     {
-        window.location.href = SetURIParams(ROUTES.PAPER_ITEM, {
-            q: record.paper
-        });
+        window.open(SetURIParams(ROUTES.PAPER_ITEM, { q: record.paper }));
     }
 
     static ExportResult(record)

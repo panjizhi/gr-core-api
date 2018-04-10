@@ -1,12 +1,24 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Divider, Icon, Input, LocaleProvider, message, Pagination, Table, TimePicker, TreeSelect } from 'antd';
+import {
+    Button,
+    Divider,
+    Icon,
+    Input,
+    LocaleProvider,
+    message,
+    Pagination,
+    Switch,
+    Table,
+    TimePicker,
+    TreeSelect
+} from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import moment from 'moment';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
 import PaperResults from '../../components/paper-results';
-import { AsyncRequest, GetURIParams, IsUndefined, ROUTES } from '../../public';
+import { AsyncRequest, GetURIParams, IsUndefined, ROUTES, DEFAULT_ERR_MESSAGE } from '../../public';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -24,7 +36,7 @@ class PaperItem extends React.Component
             default_timestamp: defaultTime.unix(),
             duration: defaultTime,
             loading: false,
-            count: 10,
+            count: 50,
             qus_current: 0,
             qus_total: 0,
             chs_current: 0,
@@ -73,6 +85,7 @@ class PaperItem extends React.Component
 
             let score = 0;
             let chs_total = 0;
+            let disorder = false;
             if (paper)
             {
                 state.pid = paper._id;
@@ -92,9 +105,12 @@ class PaperItem extends React.Component
                     chs_total = state.question_chosen.length;
                     state.chs_question_display = this.GetQuestionSection(state.question_chosen, 0);
                 }
+
+                disorder = !!paper.disorder;
             }
 
             state.score = score;
+            state.disorder = disorder;
             state.chs_total = chs_total;
             state.question_chosen = state.question_chosen || [];
             state.chs_dict = state.chs_dict || {};
@@ -417,17 +433,20 @@ class PaperItem extends React.Component
         });
     }
 
+    onDisorderChange(disorder)
+    {
+        this.setState({ disorder });
+    }
+
     onSavePaper()
     {
-        const { pid, name, category, question_chosen, score, duration, default_timestamp } = this.state;
+        const { pid, name, category, question_chosen, score, duration, disorder, default_timestamp } = this.state;
         if (!name)
         {
             return message.info('请填写试卷名称');
         }
 
-        this.setState({
-            submitting: true
-        });
+        this.setState({ submitting: true });
 
         const pdt = {
             id: pid,
@@ -435,18 +454,14 @@ class PaperItem extends React.Component
             category: category,
             questions: question_chosen && question_chosen.length ? question_chosen.map(ins => ins.id) : null,
             score: score,
-            duration: duration.unix() - default_timestamp
+            duration: duration.unix() - default_timestamp,
+            disorder: disorder ? 1 : 0
         };
         AsyncRequest('paper/SaveSingle', pdt, (err) =>
         {
             if (err)
             {
-                return message.error('保存失败', undefined, () =>
-                {
-                    this.setState({
-                        submitting: false
-                    });
-                });
+                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.setState({ submitting: false }));
             }
 
             message.success('保存成功', undefined, () => window.location.href = ROUTES.PAPERS);
@@ -475,6 +490,7 @@ class PaperItem extends React.Component
             chs_current,
             chs_total,
             score,
+            disorder,
             submitting
         } = this.state;
 
@@ -640,7 +656,7 @@ class PaperItem extends React.Component
                                     disabled={ !(chs_selected_keys && chs_selected_keys.length) }
                                     onClick={ this.onRemoveQuestion.bind(this) }
                                 >
-                                    <Icon type="left" />移除
+                                    <Icon type="left" />删除
                                 </Button>
                             </div>
                             <div>
@@ -684,6 +700,15 @@ class PaperItem extends React.Component
                                         />
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        <div className="qitem-single">
+                            <div>题目乱序</div>
+                            <div>
+                                <Switch
+                                    checked={ disorder }
+                                    onChange={ this.onDisorderChange.bind(this) }
+                                />
                             </div>
                         </div>
                         <Divider />

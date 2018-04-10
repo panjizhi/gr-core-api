@@ -100,5 +100,30 @@ module.exports = {
                 }
             }, cb);
         }, cb);
+    },
+    CreateTree: (value) =>
+    {
+        const dict = {};
+        value.forEach(ins =>
+        {
+            ins.children = [];
+            dict[ins._id.toHexString()] = ins;
+        });
+
+        const top = [];
+        value.forEach(ins => (ins.parent ? dict[ins.parent.toHexString()].children : top).push(ins));
+
+        return top;
+    },
+    CreateNameDict: (tree) =>
+    {
+        const top = {};
+        tree && tree.length && tree.forEach(ins =>
+        {
+            top[ins.name] = ins;
+            ins.child_dict = module.exports.CreateNameDict(ins.children);
+        });
+
+        return top;
     }
 };

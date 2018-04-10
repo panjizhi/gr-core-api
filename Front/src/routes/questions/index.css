@@ -1,10 +1,23 @@
 
-.qtbl-search
+.qtbl-header
 {
     padding-bottom: 24px;
-    justify-content: flex-end;
-    align-items: flex-start;
+    justify-content: center;
+    align-items: center;
     display: flex;
+}
+
+.qtbl-header > div:not(:first-child)
+{
+    margin-left: 24px;
+}
+
+.qtbl-search
+{
+    justify-content: flex-end;
+    align-items: center;
+    display: flex;
+    flex: 1;
 }
 
 .qtbl-footer

@@ -1,13 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Input, LocaleProvider, message, Pagination } from 'antd';
+import { AutoComplete, Button, Icon, Input, LocaleProvider, message, Pagination, Popconfirm, Table } from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
 import Categories from '../../components/categories';
 import CategoryAppend from '../../components/category-append';
-import QuestionTable from '../../components/question-table';
-import { AsyncRequest, IsUndefined, ROUTES } from '../../public';
+import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, ROUTES, SetURIParams } from '../../public';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -21,8 +20,9 @@ class Questions extends React.Component
         this.state = {
             loading: false,
             current: 0,
-            count: 10,
-            total: 0
+            count: 50,
+            total: 0,
+            search_data_source: []
         };
     }
 
@@ -196,6 +196,23 @@ class Questions extends React.Component
         this.setState({});
     }
 
+    onSearchAutoComplete(value)
+    {
+        if (!value)
+        {
+            return this.setState({ search_data_source: [] });
+        }
+
+        const pdt = {
+            name: value,
+            count: 20
+        };
+        AsyncRequest('question/GetNameMany', pdt, (err, dat) =>
+        {
+            this.setState({ search_data_source: err ? [] : dat });
+        });
+    }
+
     onSearchChange(e)
     {
         const search = e.target.value;
@@ -231,13 +248,31 @@ class Questions extends React.Component
 
     onRemoveQuestion(record)
     {
-        const pdt = {
-            id: record.id
-        };
-        AsyncRequest('question/RemoveSingle', pdt, () =>
+        this.DirectRemoveQuestions([record.id]);
+    }
+
+    onMultiRemoveQuestion()
+    {
+        const { selected_keys } = this.state;
+        this.DirectRemoveQuestions(selected_keys);
+    }
+
+    DirectRemoveQuestions(idArr)
+    {
+        const pdt = { id: idArr };
+        AsyncRequest('question/RemoveMany', pdt, (err) =>
         {
+            if (err)
+            {
+                return message.error(DEFAULT_ERR_MESSAGE);
+            }
+
+            message.success('删除成功');
+
             const { current } = this.state;
             this.ReadQuestions(current);
+
+            this.setState({ selected_keys: undefined });
         });
     }
 
@@ -258,12 +293,28 @@ class Questions extends React.Component
 
     static NewQuestion()
     {
-        window.location.href = ROUTES.QUESTION_ITEM;
+        window.open(ROUTES.QUESTION_ITEM);
+    }
+
+    onTableChecked(selectedRowKeys)
+    {
+        this.setState({ selected_keys: selectedRowKeys });
+    }
+
+    static EditQuestion(record)
+    {
+        let url = ROUTES.QUESTION_ITEM;
+        if (record)
+        {
+            url = SetURIParams(url, { q: record.id });
+        }
+
+        window.open(url);
     }
 
     render()
     {
-        const { loading, tree, category, search, records, current, count, total } = this.state;
+        const { loading, tree, category, search, records, current, count, total, search_data_source, selected_keys } = this.state;
 
         return (
             <div>
@@ -293,25 +344,127 @@ class Questions extends React.Component
                         }
                     </div>
                     <div className="content">
-                        <div className="qtbl-search">
-                            <Input.Search
-                                value={ search }
-                                placeholder="请输入要搜索的题目名称"
-                                onChange={ this.onSearchChange.bind(this) }
-                                onSearch={ this.onSearchQuestion.bind(this) }
-                                style={ {
-                                    width: 360
-                                } }
-                            />
+                        <div className="qtbl-header">
+                            <div>
+                                <Button
+                                    type="primary"
+                                    icon="plus"
+                                    onClick={ Questions.NewQuestion.bind(this) }
+                                >新建试题</Button>
+                            </div>
+                            <div className="qtbl-search">
+                                <AutoComplete
+                                    dataSource={ search_data_source }
+                                    onSelect={ this.onSearchQuestion.bind(this) }
+                                    onSearch={ this.onSearchAutoComplete.bind(this) }
+                                >
+                                    <Input.Search
+                                        value={ search }
+                                        placeholder="请输入要搜索的题目名称"
+                                        onChange={ this.onSearchChange.bind(this) }
+                                        onSearch={ this.onSearchQuestion.bind(this) }
+                                        style={ {
+                                            width: 360
+                                        } }
+                                    />
+                                </AutoComplete>
+                            </div>
                         </div>
-                        <QuestionTable
-                            loading={ loading }
-                            value={ records }
-                            onRemove={ this.onRemoveQuestion.bind(this) }
-                            onChange={ this.onTableChange.bind(this) }
-                        />
+                        <div>
+                            <Table
+                                loading={ loading }
+                                dataSource={ records }
+                                pagination={ false }
+                                onChange={ this.onTableChange.bind(this) }
+                                rowSelection={ {
+                                    selectedRowKeys: selected_keys,
+                                    onChange: this.onTableChecked.bind(this)
+                                } }
+                            >
+                                <Table.Column
+                                    title="名称"
+                                    dataIndex="name"
+                                    key="name"
+                                    width="25%"
+                                    render={ (text, record) => (
+                                        <div onClick={ Questions.EditQuestion.bind(this, record) }>
+                                            <a href="#">{ record.name }</a>
+                                        </div>
+                                    ) }
+                                />
+                                <Table.Column
+                                    title="学科"
+                                    dataIndex="subject"
+                                    key="subject"
+                                    width="10%"
+                                />
+                                <Table.Column
+                                    title="题型"
+                                    dataIndex="type"
+                                    key="type"
+                                    width="10%"
+                                />
+                                <Table.Column
+                                    title="难度系数"
+                                    dataIndex="weight"
+                                    key="weight"
+                                    width="10%"
+                                />
+                                <Table.Column
+                                    title="分数"
+                                    dataIndex="score"
+                                    key="score"
+                                    width="10%"
+                                />
+                                <Table.Column
+                                    title="知识点"
+                                    dataIndex="knowledges"
+                                    key="knowledges"
+                                    width="15%"
+                                />
+                                <Table.Column
+                                    title="错误率"
+                                    dataIndex="wrong_rate"
+                                    key="wrong_rate"
+                                    width="10%"
+                                    sorter={ true }
+                                />
+                                <Table.Column
+                                    title="操作"
+                                    key="action"
+                                    width="10%"
+                                    render={ (text, record) => (
+                                        <div>
+                                            <Popconfirm
+                                                placement="topRight"
+                                                title={ '是否删除\'' + record.name + '\'？' }
+                                                onConfirm={ this.onRemoveQuestion.bind(this, record) }
+                                                okText="删除"
+                                                cancelText="取消"
+                                            >
+                                                <Icon type="delete" size="small" />
+                                            </Popconfirm>
+                                        </div>
+                                    ) }
+                                />
+                            </Table>
+                        </div>
                         <div className="qtbl-footer">
-                            <Button type="primary" icon="plus" onClick={ Questions.NewQuestion.bind(this) }>添加新题</Button>
+                            {
+                                selected_keys && selected_keys.length
+                                    ? (<div>
+                                        <Popconfirm
+                                            placement="topLeft"
+                                            title={ '是否删选中试题？' }
+                                            onConfirm={ this.onMultiRemoveQuestion.bind(this) }
+                                            okText="删除"
+                                            cancelText="取消"
+                                        >
+                                            <Button icon="delete">删除</Button>
+                                        </Popconfirm>
+                                    </div>)
+                                    : null
+                            }
                             <div className="qtbl-pagination">
                                 <Pagination
                                     current={ current + 1 }

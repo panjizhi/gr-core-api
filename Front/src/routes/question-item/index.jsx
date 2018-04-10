@@ -303,15 +303,15 @@ class QuestionItem extends React.Component
                         <div className="qitem-single">
                             <div>名称</div>
                             <div>
-                                        <TextArea
-                                            rows={ 2 }
-                                            autosize={ {
-                                                minRows: 2,
-                                                maxRows: 2
-                                            } }
-                                            value={ qname }
-                                            onChange={ this.onChangeName.bind(this) }
-                                        />
+                                <TextArea
+                                    rows={ 2 }
+                                    autosize={ {
+                                        minRows: 2,
+                                        maxRows: 2
+                                    } }
+                                    value={ qname }
+                                    onChange={ this.onChangeName.bind(this) }
+                                />
                             </div>
                         </div>
                         <div className="qitem-single qitem-double">

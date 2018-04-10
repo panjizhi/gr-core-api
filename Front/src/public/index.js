@@ -1,12 +1,14 @@
 import superagent from 'superagent';
 
-export const INTERFACE_PREFIX = '';
+export const INTERFACE_PREFIX = 'https://gerun.mobi/';
+
+const suffix = '';
 
 export const UPLOAD_ADDRESS = `${INTERFACE_PREFIX}open/upload/picture`;
 
 export const DOWNLOAD_ADDRESS = `${INTERFACE_PREFIX}open/download`;
 
-const suffix = '.html';
+export const DEFAULT_ERR_MESSAGE = '网络繁忙，请稍后再试';
 
 export const ROUTES = {
     LOGIN: `login${suffix}`,
@@ -20,6 +22,10 @@ export const ROUTES = {
     RESULTS: `results${suffix}`,
     SCHEDULES: `schedules${suffix}`,
     SCHEDULE: `schedule${suffix}`,
+    AUTO_SCHEDULES: `auto-schedules${suffix}`,
+    AUTO_SCHEDULE_ITEM: `auto-schedule-item${suffix}`,
+    CANDIDATE_REPORT: `candidate-report${suffix}`,
+    CLASS_REPORT: `class-report${suffix}`,
     IMPORT: `import${suffix}`
 };
 
