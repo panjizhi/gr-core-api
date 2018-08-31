@@ -1,3 +1,17 @@
+
+.qtbl-header
+{
+    padding-bottom: 24px;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.qtbl-header > div:not(:first-child)
+{
+    margin-left: 24px;
+}
+
 .qtbl-search > *
 {
     width: auto !important;
@@ -5,10 +19,10 @@
 
 .qtbl-search
 {
-    padding-bottom: 24px;
     justify-content: flex-end;
-    align-items: flex-start;
+    align-items: center;
     display: flex;
+    flex: 1;
 }
 
 .qtbl-footer
@@ -25,4 +39,21 @@
     align-items: flex-end;
     display: flex;
     flex: 1;
+}
+
+.stble-paper
+{
+    justify-items: center;
+    justify-content: flex-start;
+    display: flex;
+}
+
+.stble-paper > div
+{
+    cursor: pointer;
+}
+
+.stble-paper > div:not(:first-child)
+{
+    margin-left: 12px;
 }

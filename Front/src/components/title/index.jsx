@@ -76,7 +76,10 @@ export default class Title extends PureComponent
                             </Menu>
                         }>
                             <div className="user">
-                                <Avatar size="small">{ login.avatar ? null : (login.name ? login.name.substr(0, 1) : null) }</Avatar>
+                                <Avatar
+                                    size="small"
+                                    src={ login.avatar }
+                                >{ login.avatar ? null : (login.name ? login.name.substr(0, 1) : null) }</Avatar>
                                 <span>{ login.name }</span>
                             </div>
                         </Dropdown>) : (<Spin size="small" />)

@@ -3,17 +3,18 @@ const { COLLS } = require('../includes/decl');
 const async = require('../includes/workflow');
 const mongodb = require('../drivers/mongodb');
 const category = require('../dal/category.dal');
+const notification = require('../dal/notification');
 
 module.exports = {
-    GetCategories: (cb) =>
+    GetCategories: (subjects, cb) =>
     {
-        mongodb.GetCollection(COLLS.PAPER_CATEGORY, (err, coll, cb) =>
+        if (subjects)
         {
-            coll.find({}, {
-                sort: {
-                    updated_time: 1
-                }
-            }).toArray(cb);
+            return category.LoopContent(COLLS.PAPER_CATEGORY, subjects, cb);
+        }
+
+        mongodb.FindMany(COLLS.PAPER_CATEGORY, null, {
+            sort: { updated_time: 1 }
         }, cb);
     },
     AddCategory: (name, _pid, cb) =>
@@ -59,20 +60,17 @@ module.exports = {
             category.Remove(COLLS.PAPER_CATEGORY, _ids, cb);
         });
     },
-    GetMany: (name, _cid, _qid, start, count, cb) =>
+    GetMany: (subjects, name, _cid, _qid, start, count, cb) =>
     {
         async.auto({
             categories: (cb) =>
             {
-                if (!_cid)
+                if (_cid || subjects)
                 {
-                    return cb();
+                    return category.LoopIDs(COLLS.PAPER_CATEGORY, _cid || subjects, cb);
                 }
 
-                mongodb.GetCollection(COLLS.PAPER_CATEGORY, (err, coll, cb) =>
-                {
-                    category.LoopIDs(coll, _cid, cb);
-                }, cb);
+                cb();
             }
         }, (err, dat) =>
         {
@@ -86,20 +84,18 @@ module.exports = {
             const filter = {};
             if (name)
             {
-                filter['name'] = {
+                filter.name = {
                     $regex: name,
                     $options: 'i'
                 };
             }
             if (categories)
             {
-                filter['category'] = {
-                    $in: categories
-                };
+                filter.category = { $in: categories };
             }
             if (_qid)
             {
-                filter['questions'] = _qid;
+                filter.questions = _qid;
             }
             mongodb.CallPagingModel(COLLS.PAPER, filter, {
                 updated_time: -1
@@ -122,13 +118,29 @@ module.exports = {
                         return cb();
                     }
 
-                    mongodb.GetCollection(COLLS.QUESTION, (err, coll, cb) =>
+                    mongodb.FindMany(COLLS.QUESTION, {
+                        _id: { $in: paper.questions }
+                    }, cb);
+                }
+            ],
+            articles: [
+                'questions',
+                ({ questions }, cb) =>
+                {
+                    if (!questions || !questions.length)
                     {
-                        coll.find({
-                            _id: {
-                                $in: paper.questions
-                            }
-                        }).toArray(cb);
+                        return cb();
+                    }
+
+                    const aids = [];
+                    questions.forEach(ins => ins.article && aids.push(ins.article));
+                    if (!aids.length)
+                    {
+                        return cb();
+                    }
+
+                    mongodb.FindMany(COLLS.ARTICLE, {
+                        _id: { $in: aids }
                     }, cb);
                 }
             ]
@@ -139,7 +151,7 @@ module.exports = {
                 return cb(err);
             }
 
-            const { paper, questions } = dat;
+            const { paper, questions, articles } = dat;
             if (!questions || !questions.length)
             {
                 paper.questions = null;
@@ -157,32 +169,30 @@ module.exports = {
             });
 
             paper.questions = qarr;
+            paper.articles = articles;
 
             cb(null, paper);
         });
     },
     SaveSingle: (doc, cb) =>
     {
+        if (doc.id)
+        {
+            doc._id = doc.id;
+            delete doc.id;
+        }
+
         let update = 0;
         if (doc._id)
         {
-            delete doc.id;
             update = 1;
         }
 
-        if (doc._category)
-        {
-            doc.category = doc._category;
-            delete doc._category;
-        }
-
-        if (doc.questions && doc.questions.length)
-        {
-            doc.questions = mongodb.CreateObjectIDArr(doc.questions);
-        }
-
         const ntsmp = moment().unix();
-        doc.created_time = ntsmp;
+        if (!update)
+        {
+            doc.created_time = ntsmp;
+        }
         doc.updated_time = ntsmp;
 
         async.auto({
@@ -193,41 +203,266 @@ module.exports = {
                     return cb();
                 }
 
-                mongodb.GetCollection(COLLS.SCHEDULE, (err, coll, cb) =>
-                {
-                    coll.updateMany({
-                        paper: doc._id
-                    }, {
-                        $set: {
-                            paper_name: doc.name
-                        }
-                    }, cb);
+                mongodb.UpdateMany(COLLS.SCHEDULE, { paper: doc._id }, {
+                    $set: {
+                        paper_name: doc.name
+                    }
                 }, cb);
-            }
-        }, (err) =>
-        {
-            if (err)
-            {
-                return cb(err);
-            }
-
-            update ? mongodb.UpdateOne(COLLS.PAPER, { _id: doc._id }, doc, null, 1, cb) : mongodb.InsertOne(COLLS.PAPER, doc, cb);
-        });
-    },
-    RemoveSingle: (_id, cb) =>
-    {
-        async.auto({
-            schedules: (cb) =>
-            {
-                mongodb.GetCollection(COLLS.SCHEDULE, (err, coll, cb) => coll.remove({ paper: _id }, cb), cb);
             },
             exec: [
-                'schedules',
-                ({ schedules }, cb) =>
+                'schedule',
+                (dat, cb) =>
                 {
-                    mongodb.GetCollection(COLLS.PAPER, (err, coll, cb) => coll.remove({ _id }, cb), cb);
+                    update ?
+                        mongodb.UpdateOne(COLLS.PAPER, { _id: doc._id }, doc, null, 1, cb) :
+                        mongodb.InsertOne(COLLS.PAPER, doc, cb);
                 }
             ]
         }, cb);
+    },
+    RemoveMany: (idArr, cb) =>
+    {
+        async.eachLimit(idArr, 10, (_id, cb) =>
+        {
+            async.auto({
+                notice: (cb) =>
+                {
+                    notification.Trigger('BeforeRemovePaper', _id, cb);
+                },
+                remove: [
+                    'notice',
+                    (dat, cb) =>
+                    {
+                        mongodb.Remove(COLLS.PAPER, { _id }, cb);
+                    }
+                ]
+            }, () => cb());
+        }, cb);
+    },
+    UpdateScore: (_id, cb) =>
+    {
+        async.auto({
+            questions: (cb) =>
+            {
+                mongodb.FindOne(COLLS.PAPER, { _id }, {
+                    projection: { questions: 1 }
+                }, cb);
+            },
+            score: [
+                'questions',
+                ({ questions: { questions } }, cb) =>
+                {
+                    mongodb.GetCollection(COLLS.QUESTION, (err, coll, cb) =>
+                    {
+                        coll.aggregate([
+                            {
+                                $match: {
+                                    _id: { $in: questions }
+                                }
+                            },
+                            {
+                                $group: {
+                                    _id: 'sum',
+                                    score: { $sum: '$score' }
+                                }
+                            }
+                        ]).toArray((err, dat) =>
+                        {
+                            if (err)
+                            {
+                                return cb(err);
+                            }
+
+                            if (!dat.length)
+                            {
+                                return cb(null, 0);
+                            }
+
+                            const { score } = dat[0];
+                            cb(null, score);
+                        });
+                    }, cb);
+                }
+            ],
+            exec: [
+                'score',
+                ({ score }, cb) =>
+                {
+                    mongodb.UpdateSingle(COLLS.PAPER, { _id }, {
+                        $set: { score }
+                    }, cb);
+                }
+            ]
+        }, cb);
+    },
+    UpdateScoreByQuestion: (_id, cb) =>
+    {
+        async.auto({
+            papers: (cb) =>
+            {
+                mongodb.FindMany(COLLS.PAPER, { questions: _id }, {
+                    projection: { _id: 1 }
+                }, cb);
+            },
+            exec: [
+                'papers',
+                ({ papers }, cb) =>
+                {
+                    async.eachLimit(papers, 10, (ins, cb) =>
+                    {
+                        module.exports.UpdateScore(ins._id, () => cb());
+                    }, cb);
+                }
+            ]
+        }, cb);
+    },
+    RemoveQuestion: (_id, cb) =>
+    {
+        async.auto({
+            papers: (cb) =>
+            {
+                mongodb.FindMany(COLLS.PAPER, { questions: _id }, {
+                    projection: { _id: 1 }
+                }, cb);
+            },
+            exec: [
+                'papers',
+                ({ papers }, cb) =>
+                {
+                    async.eachLimit(papers, 10, (ins, cb) =>
+                    {
+                        async.auto({
+                            remove: (cb) =>
+                            {
+                                mongodb.UpdateSingle(COLLS.PAPER, { _id: ins._id }, {
+                                    $pull: { questions: _id }
+                                }, null, cb);
+                            },
+                            update: [
+                                'remove',
+                                (dat, cb) =>
+                                {
+                                    module.exports.UpdateScore(ins._id, cb);
+                                }
+                            ]
+                        }, cb);
+                    }, cb);
+                }
+            ]
+        }, cb);
+    },
+    CreateCategory: (ext, subDict, cb) =>
+    {
+        let parent = null;
+        async.auto({
+            subject: (cb) =>
+            {
+                if (!ext.subject)
+                {
+                    return cb('Pass');
+                }
+
+                let ins = subDict[ext.subject];
+                if (ins)
+                {
+                    parent = ins._id;
+                    return cb(null, ins.child_dict);
+                }
+
+                module.exports.AddCategory(ext.subject, parent, (err, dat) =>
+                {
+                    if (err)
+                    {
+                        return cb(err);
+                    }
+
+                    subDict[ext.subject] = ins = {
+                        _id: dat,
+                        name: ext.subject,
+                        parent: parent,
+                        child_dict: {}
+                    };
+
+                    parent = dat;
+                    cb(null, ins.child_dict);
+                });
+            },
+            section: [
+                'subject',
+                ({ subject: secDict }, cb) =>
+                {
+                    if (!ext.section)
+                    {
+                        return cb('Pass');
+                    }
+
+                    let ins = secDict[ext.section];
+                    if (ins)
+                    {
+                        parent = ins._id;
+                        return cb(null, ins.child_dict);
+                    }
+
+                    module.exports.AddCategory(ext.section, parent, (err, dat) =>
+                    {
+                        if (err)
+                        {
+                            return cb(err);
+                        }
+
+                        secDict[ext.section] = ins = {
+                            _id: dat,
+                            name: ext.section,
+                            parent: parent,
+                            child_dict: {}
+                        };
+
+                        parent = dat;
+                        cb(null, ins.child_dict);
+                    });
+                }
+            ],
+            knowledge: [
+                'section',
+                ({ section: knoDict }, cb) =>
+                {
+                    if (!ext.knowledge)
+                    {
+                        return cb();
+                    }
+
+                    let ins = knoDict[ext.knowledge];
+                    if (ins)
+                    {
+                        parent = ins._id;
+                        return cb();
+                    }
+
+                    module.exports.AddCategory(ext.knowledge, parent, (err, dat) =>
+                    {
+                        if (err)
+                        {
+                            return cb(err);
+                        }
+
+                        knoDict[ext.knowledge] = ins = {
+                            _id: dat,
+                            name: ext.knowledge,
+                            parent: parent,
+                            child_dict: {}
+                        };
+
+                        parent = dat;
+                        cb();
+                    });
+                }
+            ]
+        }, () =>
+        {
+            cb(null, parent);
+        });
     }
 };
+
+notification.Bind('BeforeRemoveQuestion', module.exports.RemoveQuestion);
+notification.Bind('AfterUpdateQuestion', module.exports.UpdateScoreByQuestion);

@@ -1,0 +1,78 @@
+.cal-date-selector
+{
+    justify-content: flex-end;
+    align-items: center;
+    display: flex;
+}
+
+.cal-days
+{
+    margin-top: 24px;
+}
+
+.cal-days > div
+{
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.cal-week
+{
+}
+
+.cal-days > div
+{
+    margin-top: 5px;
+}
+
+.cal-days > div > div
+{
+    flex: 1;
+}
+
+.cal-days > div > div:not(:first-child)
+{
+    margin-left: 16px;
+}
+
+.cal-week > div
+{
+    padding: 0 5px;
+    text-align: right;
+}
+
+.cal-week > div:before
+{
+    content: "星期";
+}
+
+.cal-day
+{
+    position: relative;
+    border-top: solid 2px #e8e8e8;
+    transition: all .3s;
+}
+
+.cal-day > div:first-child
+{
+    position: absolute;
+    top: 0;
+    right: 5px;
+}
+
+.cal-day.out > div:first-child
+{
+    color: rgba(0, 0, 0, 0.25);
+}
+
+.cal-day.checked
+{
+    border-top-color: #1890ff;
+    background: #e6f7ff;
+}
+
+.cal-day > div:last-child
+{
+    height: 100%;
+}

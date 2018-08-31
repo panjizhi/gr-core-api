@@ -12,7 +12,7 @@ export default class QuestionPapers extends React.Component
         this.state = {
             qid: props.value,
             current: 0,
-            count: 10,
+            count: 50,
             total: 0
         };
     }
@@ -84,9 +84,7 @@ export default class QuestionPapers extends React.Component
 
     static onNavigate(id)
     {
-        window.location.href = SetURIParams(ROUTES.PAPER_ITEM, {
-            q: id
-        });
+        window.open(SetURIParams(ROUTES.PAPER_ITEM, { q: id }));
     }
 
     render()

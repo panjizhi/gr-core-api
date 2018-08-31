@@ -2,6 +2,7 @@ import React from 'react';
 import { Input, message, Pagination, Table, TreeSelect } from 'antd';
 import moment from 'moment';
 import { AsyncRequest, IsUndefined } from '../../public';
+import { FillCandidates } from '../../public/utils';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -16,7 +17,7 @@ export default class ScheduleCandidates extends React.Component
         this.state = {
             default_timestamp: defaultTime.unix(),
             loading: false,
-            count: 10,
+            count: 50,
             current: 0,
             total: 0,
             checked_dict: {},
@@ -43,7 +44,7 @@ export default class ScheduleCandidates extends React.Component
                 dict: dict,
                 tree: tree,
                 total: total,
-                records: this.FillCandidates(records, dict)
+                records: FillCandidates(records, dict)
             });
         });
     }
@@ -56,7 +57,7 @@ export default class ScheduleCandidates extends React.Component
             {
                 return message.error('加载分类出现错误', undefined, () =>
                 {
-                    this.DirectReadCategories(action, cb);
+                    this.DirectReadCategories(cb);
                 });
             }
 
@@ -93,7 +94,7 @@ export default class ScheduleCandidates extends React.Component
         {
             const { dict, checked_dict } = this.state;
 
-            const rcds = this.FillCandidates(records, dict);
+            const rcds = FillCandidates(records, dict);
 
             const selectedKeys = [];
             rcds.forEach(ins => ins.id in checked_dict && selectedKeys.push(ins.id));
@@ -104,22 +105,6 @@ export default class ScheduleCandidates extends React.Component
                 total: total,
                 records: rcds
             });
-        });
-    }
-
-    FillCandidates(records, dict)
-    {
-        return records.map(ins =>
-        {
-            return {
-                id: ins._id,
-                key: ins._id,
-                avatar: ins.avatarUrl,
-                name: ins.name,
-                grade: ins.grade ? dict[ins.grade].name : '无',
-                class: ins.class ? dict[ins.class].name : '无',
-                registered_time: ins.createTime ? moment(ins.createTime).format('YYYY-MM-DD HH:mm:ss') : '较早之前'
-            };
         });
     }
 
@@ -136,7 +121,7 @@ export default class ScheduleCandidates extends React.Component
         {
             if (err)
             {
-                return message.error('加载考生出现错误', undefined, () =>
+                return message.error('加载学生出现错误', undefined, () =>
                 {
                     this.DirectReadCandidates(current, cb);
                 });
@@ -214,7 +199,7 @@ export default class ScheduleCandidates extends React.Component
 
         const LoopSelect = (dat) =>
         {
-            return !dat || !dat.length ? null : dat.map(ins =>
+            return !dat || !dat.length ? [] : dat.map(ins =>
                 <TreeSelect.TreeNode
                     value={ ins.id }
                     title={ ins.name }
@@ -230,14 +215,14 @@ export default class ScheduleCandidates extends React.Component
                         <TreeSelect
                             allowClear
                             treeDefaultExpandAll
-                            placeholder="请选择考生分类"
+                            placeholder="请选择班级"
                             value={ category }
                             onChange={ this.onCategoryChanged.bind(this) }
                         >{ LoopSelect(tree) }</TreeSelect>
                     </div>
                     <div>
                         <Input.Search
-                            placeholder="请输入考生名称"
+                            placeholder="请输入学生名称"
                             value={ search }
                             onChange={ this.onSearchChange.bind(this) }
                             onSearch={ this.onSearchResult.bind(this) }
@@ -273,21 +258,15 @@ export default class ScheduleCandidates extends React.Component
                             width="25%"
                         />
                         <Table.Column
-                            title="年级"
-                            dataIndex="grade"
-                            key="grade"
-                            width="20%"
-                        />
-                        <Table.Column
                             title="班级"
-                            dataIndex="class"
-                            key="class"
-                            width="20%"
+                            dataIndex="classes"
+                            key="classes"
+                            width="40%"
                         />
                         <Table.Column
                             title="注册时间"
-                            dataIndex="registered_time"
-                            key="registered_time"
+                            dataIndex="created_time"
+                            key="created_time"
                             width="25%"
                         />
                     </Table>

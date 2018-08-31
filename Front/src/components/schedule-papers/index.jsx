@@ -1,5 +1,6 @@
 import React from 'react';
 import { Input, message, Pagination, Table, TreeSelect } from 'antd';
+import ScheduleSource from '../../components/schedule-source';
 import moment from 'moment';
 import { AsyncRequest, IsUndefined } from '../../public';
 import async from '../../public/workflow';
@@ -16,10 +17,10 @@ export default class SchedulePapers extends React.Component
         this.state = {
             default_timestamp: defaultTime.unix(),
             loading: false,
-            count: 10,
+            count: 50,
             current: 0,
             total: 0,
-            checked_dict: {},
+            checked_dict: {}
         };
     }
 
@@ -50,14 +51,11 @@ export default class SchedulePapers extends React.Component
 
     DirectReadCategories(cb)
     {
-        AsyncRequest('paper/GetCategories', null, (err, dat) =>
+        AsyncRequest('paper/GetManageableCategories', null, (err, dat) =>
         {
             if (err)
             {
-                return message.error('加载分类出现错误', undefined, () =>
-                {
-                    this.DirectReadCategories(action, cb);
-                });
+                return message.error('加载分类出现错误', undefined, () => this.DirectReadCategories(cb));
             }
 
             const dict = {};
@@ -72,8 +70,8 @@ export default class SchedulePapers extends React.Component
             Object.values(dict).forEach(ins => ins.parent ? dict[ins.parent].children.push(ins) : tree.push(ins));
 
             cb(null, {
-                dict: dict,
-                tree: tree
+                dict,
+                tree
             });
         });
     }
@@ -127,10 +125,11 @@ export default class SchedulePapers extends React.Component
     {
         const { name, category, count } = this.state;
         const pdt = {
-            name: name,
-            category: category,
+            name,
+            category,
             start: current * count,
-            count: count
+            count,
+            manageable: 1
         };
         AsyncRequest('paper/GetMany', pdt, (err, dat) =>
         {
@@ -197,6 +196,12 @@ export default class SchedulePapers extends React.Component
         });
     }
 
+    onSourceChange(value)
+    {
+        const { onSourceChange } = this.props;
+        onSourceChange && onSourceChange(value);
+    }
+
     render()
     {
         const {
@@ -214,34 +219,50 @@ export default class SchedulePapers extends React.Component
 
         const LoopSelect = (dat) =>
         {
-            return !dat || !dat.length ? null : dat.map(ins =>
+            return !dat || !dat.length ? [] : dat.map(ins =>
                 <TreeSelect.TreeNode
                     value={ ins.id }
                     title={ ins.name }
                     key={ ins.id }
-                >{ LoopSelect(ins.children) }</TreeSelect.TreeNode>
+                >
+                    {
+                        LoopSelect(ins.children)
+                    }
+                </TreeSelect.TreeNode>
             );
         };
 
         return (
             <div>
-                <div className="sch-selector">
+                <div className="sch-header">
                     <div>
-                        <TreeSelect
-                            allowClear
-                            treeDefaultExpandAll
-                            placeholder="请选择试卷分类"
-                            value={ category }
-                            onChange={ this.onCategoryChanged.bind(this) }
-                        >{ LoopSelect(tree) }</TreeSelect>
-                    </div>
-                    <div>
-                        <Input.Search
-                            placeholder="请输入试卷名称"
-                            value={ search }
-                            onChange={ this.onSearchChange.bind(this) }
-                            onSearch={ this.onSearchResult.bind(this) }
+                        <ScheduleSource
+                            value="manual"
+                            onChange={ this.onSourceChange.bind(this) }
                         />
+                    </div>
+                    <div className="sch-manual-selector">
+                        <div>
+                            <TreeSelect
+                                allowClear
+                                treeDefaultExpandAll
+                                placeholder="请选择试卷分类"
+                                value={ category }
+                                onChange={ this.onCategoryChanged.bind(this) }
+                            >
+                                {
+                                    LoopSelect(tree)
+                                }
+                            </TreeSelect>
+                        </div>
+                        <div>
+                            <Input.Search
+                                placeholder="请输入试卷名称"
+                                value={ search }
+                                onChange={ this.onSearchChange.bind(this) }
+                                onSearch={ this.onSearchResult.bind(this) }
+                            />
+                        </div>
                     </div>
                 </div>
                 <div>

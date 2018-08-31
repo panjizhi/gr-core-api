@@ -12,8 +12,71 @@
     height: 100% !important;
 }
 
+.ant-upload.ant-upload-select-picture-card
+{
+    display: block !important;
+}
+
+.ant-upload.ant-upload-select-picture-card > .ant-upload
+{
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    display: flex !important;
+}
+
 .pup-container img
 {
     width: 100%;
     height: 100%;
+}
+
+.upload-icon-plus
+{
+    font-size: 32px;
+}
+
+.upload-container
+{
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.upload-mask
+{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, .5);
+    opacity: 0;
+    transition: all .3s;
+    z-index: 9;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.upload-container:hover > .upload-mask
+{
+    opacity: 1;
+}
+
+.upload-mask > *
+{
+    font-size: 20px;
+    color: hsla(0, 0%, 100%, .85);
+    transition: all .3s;
+}
+
+.upload-mask > *:not(:first-child)
+{
+    margin-left: 12px;
+}
+
+.upload-mask > *:hover
+{
+    color: #fff;
 }

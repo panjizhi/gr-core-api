@@ -1,5 +1,7 @@
 const async = require('../includes/workflow');
-const question = require('../dal/question.dal');
+const category = require('../dal/category.dal');
+const questionDAL = require('../dal/question.dal');
+const paperDAL = require('../dal/paper.dal');
 
 const ParseUInt = (row, index) =>
 {
@@ -23,76 +25,270 @@ const ParseUInt = (row, index) =>
     return value;
 };
 
-const FillSubject = (row, subjects, sindex, kindex, value) =>
+const FillCategory = (row, subjectIndex, sectionIndex, knowledgeIndex, value) =>
 {
-    const sub = row[sindex];
+    const { cache } = value;
+
+    const sub = row[subjectIndex];
     if (sub)
     {
-        const subject = subjects[sub];
-        if (subject)
+        cache.subject = sub;
+
+        const sec = row[sectionIndex];
+        if (sec)
         {
-            value.subject = subject._id;
+            cache.section = sec;
 
-            const kndges = row[kindex];
-            if (kndges)
+            const kno = row[knowledgeIndex];
+            if (kno)
             {
-                const ksarr = kndges.split(',');
-                if (ksarr && ksarr.length)
-                {
-                    const kndgeArr = [];
-                    ksarr.forEach(key =>
-                    {
-                        if (key)
-                        {
-                            const ins = subject.knowledges[key];
-                            ins && kndgeArr.push(ins._id);
-                        }
-                    });
-
-                    if (kndgeArr.length)
-                    {
-                        value.knowledges = kndgeArr;
-                    }
-                }
+                cache.knowledges = kno.split(/[,，]/g);
             }
         }
     }
 };
 
-const ROW_PARSER = [
-    (row, subjects) =>
-    {
-        if (row.length < 13)
+const CreateCategory = (qus, nameDict, cb) =>
+{
+    const { cache } = qus;
+    let parent = null;
+
+    async.auto({
+        subject: (cb) =>
         {
-            return null;
+            if (!cache.subject)
+            {
+                return cb('Pass');
+            }
+
+            let ins = nameDict[cache.subject];
+            if (ins)
+            {
+                qus.subject = ins._id;
+                parent = ins._id;
+                return cb(null, ins.child_dict);
+            }
+
+            questionDAL.AddCategory(cache.subject, parent, (err, dat) =>
+            {
+                if (err)
+                {
+                    return cb(err);
+                }
+
+                nameDict[cache.subject] = ins = {
+                    _id: dat,
+                    name: cache.subject,
+                    parent: parent,
+                    child_dict: {}
+                };
+
+                qus.subject = dat;
+                parent = dat;
+                cb(null, ins.child_dict);
+            });
+        },
+        section: [
+            'subject',
+            ({ subject: secDict }, cb) =>
+            {
+                if (!cache.section)
+                {
+                    return cb('Pass');
+                }
+
+                let ins = secDict[cache.section];
+                if (ins)
+                {
+                    parent = ins._id;
+                    return cb(null, ins.child_dict);
+                }
+
+                questionDAL.AddCategory(cache.section, parent, (err, dat) =>
+                {
+                    if (err)
+                    {
+                        return cb(err);
+                    }
+
+                    secDict[cache.section] = ins = {
+                        _id: dat,
+                        name: cache.section,
+                        parent: parent,
+                        child_dict: {}
+                    };
+
+                    parent = dat;
+                    cb(null, ins.child_dict);
+                });
+            }
+        ],
+        knowledges: [
+            'section',
+            ({ section: knoDict }, cb) =>
+            {
+                if (!cache.knowledges)
+                {
+                    return cb();
+                }
+
+                qus.knowledges = [];
+
+                async.eachLimit(cache.knowledges, 1, (kno, cb) =>
+                {
+                    let ins = knoDict[kno];
+                    if (ins)
+                    {
+                        qus.knowledges.push(ins._id);
+                        return cb();
+                    }
+
+                    questionDAL.AddCategory(kno, parent, (err, dat) =>
+                    {
+                        if (err)
+                        {
+                            return cb(err);
+                        }
+
+                        knoDict[kno] = ins = {
+                            _id: dat,
+                            name: kno,
+                            parent: parent,
+                            child_dict: {}
+                        };
+
+                        qus.knowledges.push(ins._id);
+                        cb();
+                    });
+                }, cb);
+            }
+        ]
+    }, () => cb());
+};
+
+const CreateArticle = (qus, cb) =>
+{
+    const { cache } = qus;
+    const { article, ap } = cache;
+    if (!article)
+    {
+        return cb();
+    }
+
+    questionDAL.QueryArticle(article, (err, dat) =>
+    {
+        if (!err && dat)
+        {
+            qus.article = dat._id;
+            return cb();
         }
 
-        const value = {};
+        questionDAL.SaveArticle(article, ap, 1, (err, dat) =>
+        {
+            if (err)
+            {
+                return cb(err);
+            }
 
-        const name = row[1];
+            qus.article = dat;
+            cb();
+        });
+    });
+};
+
+const CreateQuestion = (qus, cb) =>
+{
+    const func = [
+        (cb) => questionDAL.QueryRadio(qus.name, (err, dat) =>
+        {
+            if (err)
+            {
+                return cb(err);
+            }
+
+            if (dat.content.options.length < qus.content.options.length)
+            {
+                qus._id = dat._id;
+                return cb('Out of date.');
+            }
+
+            cb(null, dat);
+        }),
+        (cb) => questionDAL.QueryBlank(qus.name, qus.content.text, cb)
+    ];
+
+    const ins = func[qus.qtype];
+    ins((err, dat) =>
+    {
+        if (!err && dat)
+        {
+            qus._id = dat._id;
+        }
+
+        questionDAL.SaveSingle(qus, (err, dat) =>
+        {
+            if (err)
+            {
+                return cb(err);
+            }
+
+            cb(null, {
+                _id: qus._id || dat,
+                score: qus.score
+            });
+        });
+    });
+};
+
+const ROW_PARSER = [
+    (row, value) =>
+    {
+        if (row.length < 16)
+        {
+            return 1;
+        }
+
+        const { cache, contact } = value;
+
+        const subjectIndex = 1;
+        const articleIndex = 2;
+        const nameIndex = 3;
+        const optionIndex = 4;
+        const answerIndex = 10;
+        const explainIndex = 11;
+        const sectionIndex = 12;
+        const knowledgeIndex = 13;
+        const weightIndex = 14;
+        const scoreIndex = 15;
+        const disorderIndex = 16;
+        const apIndex = 17;
+
+        const name = row[nameIndex];
         if (!name)
         {
-            return null;
+            return 1;
         }
 
         value.name = name;
 
-        FillSubject(row, subjects, 2, 3, value);
+        FillCategory(row, subjectIndex, sectionIndex, knowledgeIndex, value);
 
         const content = {};
 
         const options = [];
         for (let i = 0; i < 6; ++i)
         {
-            let opt = row[i + 4];
-            if (!opt || !(opt = opt.trim()))
+            let opt = row[optionIndex + i];
+            if (opt)
             {
-                break;
+                opt = opt.toString().trim();
+                if (opt)
+                {
+                    options.push({ title: opt });
+                }
             }
-
-            options.push({ title: opt });
         }
-        const right = row[10];
+        const right = row[answerIndex];
         if (right)
         {
             const code = right.charCodeAt();
@@ -110,99 +306,158 @@ const ROW_PARSER = [
 
         content.options = options;
 
-        const weight = ParseUInt(row, 11);
+        const weight = ParseUInt(row, weightIndex);
         value.weight = weight > 5 ? 5 : weight;
 
-        const score = ParseUInt(row, 12);
+        const score = ParseUInt(row, scoreIndex);
         value.score = score === 0 ? 1 : score;
+
+        content.disorder = row[disorderIndex] !== '否' ? 1 : 0;
 
         value.content = content;
 
-        return value;
-    },
-    (row, subjects) =>
-    {
-        if (row.length < 8)
+        value.explain = row[explainIndex];
+
+        const article = row.length > articleIndex ? row[articleIndex] : null;
+        const aup = !article;
+        cache.article = aup ? contact.article : article;
+        if (!aup)
         {
-            return null;
+            contact.article = article;
         }
 
-        const value = {};
+        const ap = row.length > apIndex ? row[apIndex] : null;
+        const apup = !ap;
+        cache.ap = apup ? contact.ap : ap;
+        if (!apup)
+        {
+            contact.ap = ap;
+        }
 
-        const name = row[1];
+        return 0;
+    },
+    (row, value) =>
+    {
+        if (row.length < 10)
+        {
+            return 1;
+        }
+
+        let ci = 1;
+
+        const { cache, contact } = value;
+
+        const name = row[ci++];
         if (!name)
         {
-            return null;
+            return 1;
         }
 
         value.name = name;
 
-        FillSubject(row, subjects, 2, 3, value);
+        FillCategory(row, ci++, ci++, ci++, value);
 
-        const weight = ParseUInt(row, 4);
+        const weight = ParseUInt(row, ci++);
         value.weight = weight > 5 ? 5 : weight;
 
-        const score = ParseUInt(row, 5);
+        const score = ParseUInt(row, ci++);
         value.score = score === 0 ? 1 : score;
 
         const content = {};
 
-        const text = row[6];
+        const text = row[ci++];
         if (!text)
         {
-            return null;
+            return 1;
         }
 
         content.text = text;
 
-        content.count = ParseUInt(row, 7);
+        content.count = ParseUInt(row, ci++);
 
         const answers = [];
-        let index = 8;
-        while (index)
+        for (let i = 0; i < content.count; ++i)
         {
-            if (index >= row.length)
+            const idx = ci++;
+            if (row.length <= idx)
             {
-                break;
+                return 1;
             }
 
-            const ans = row[index];
+            const ans = row[idx];
             if (!ans)
             {
-                break;
+                return 1;
             }
 
             answers.push(ans);
-            ++index;
         }
 
         content.answers = answers;
 
         value.content = content;
 
-        return value;
+        const pictureIndex = ci++;
+        if (row.length > pictureIndex)
+        {
+            const v = row[pictureIndex];
+            if (v)
+            {
+                value.picture = v;
+                value.external = 1;
+            }
+        }
+
+        const explainIndex = ci++;
+        if (row.length > explainIndex)
+        {
+            const v = row[explainIndex];
+            if (v)
+            {
+                value.explain = v;
+            }
+        }
+
+        const articleIndex = ci++;
+        if (row.length > articleIndex)
+        {
+            const v = row[articleIndex];
+            if (v)
+            {
+                const up = v === '同上';
+                cache.article = up ? contact.article : v;
+                if (!up)
+                {
+                    contact.article = v;
+                }
+            }
+        }
+
+        const apIndex = ci++;
+        if (row.length > apIndex)
+        {
+            const v = row[apIndex];
+            if (v)
+            {
+                const up = v === '同上';
+                cache.ap = up ? contact.ap : v;
+                if (!up)
+                {
+                    contact.ap = v;
+                }
+            }
+        }
+
+        return 0;
     }
 ];
-
-const Loop = (arr, level, cb) =>
-{
-    if (!arr || !arr.length)
-    {
-        return;
-    }
-
-    arr.forEach(ins =>
-    {
-        cb(ins, level);
-        Loop(ins.children, level + 1, cb);
-    });
-};
 
 module.exports = {
     ParseSheets: (sheets, cb) =>
     {
         async.auto({
-            categories: cb => question.GetCategories(cb)
+            categories: cb => questionDAL.GetCategories(cb),
+            paper_cat: cb => paperDAL.GetCategories(cb)
         }, (err, dat) =>
         {
             if (err)
@@ -210,39 +465,20 @@ module.exports = {
                 return cb(err);
             }
 
-            const { categories: cat } = dat;
+            const { categories: cat, paper_cat } = dat;
 
-            const dict = {};
-            cat.forEach(ins =>
-            {
-                ins.children = [];
-                dict[ins._id.toHexString()] = ins;
-            });
+            const tree = category.CreateTree(cat);
+            const nameDict = category.CreateNameDict(tree);
 
-            const subjects = {};
-            Object.keys(dict).forEach(key =>
-            {
-                const ins = dict[key];
-                ins.parent ? dict[ins.parent].children.push(ins) : (subjects[ins.name] = ins);
-            });
+            const paperTree = category.CreateTree(paper_cat);
+            const paperCatDict = category.CreateNameDict(paperTree);
 
-            Object.keys(subjects).forEach(key =>
+            async.eachSeries(sheets, (sheet, cb) =>
             {
-                const ins = subjects[key];
-                const knlges = {};
-                Loop(ins.children, 1, (child, level) =>
-                {
-                    if (level >= 2)
-                    {
-                        knlges[child.name] = child
-                    }
-                });
-                ins.knowledges = knlges;
-            });
+                const qusArr = [];
+                const ext = {};
 
-            const qusArr = [];
-            sheets.forEach(sheet =>
-            {
+                const contact = {};
                 sheet.data.forEach(row =>
                 {
                     if (!row || !row.length)
@@ -263,21 +499,85 @@ module.exports = {
                             return true;
                     }
 
-                    const value = ROW_PARSER[qtype](row, subjects);
-                    if (value)
+                    const value = {
+                        cache: {},
+                        contact
+                    };
+                    if (!ROW_PARSER[qtype](row, value, ext))
                     {
                         value.qtype = qtype;
                         qusArr.push(value);
+
+                        const { cache } = value;
+                        if (!ext.subject && cache.subject)
+                        {
+                            ext.subject = cache.subject;
+                            if (!ext.section && cache.section)
+                            {
+                                ext.section = cache.section;
+                                if (!ext.knowledge && cache.knowledges && cache.knowledges.length)
+                                {
+                                    ext.knowledge = cache.knowledges[0];
+                                }
+                            }
+                        }
                     }
                 });
-            });
 
-            if (!qusArr.length)
-            {
-                return cb();
-            }
+                async.auto({
+                    category: (cb) =>
+                    {
+                        async.eachSeries(qusArr, (ins, cb) => CreateCategory(ins, nameDict, cb), cb);
+                    },
+                    article: (cb) =>
+                    {
+                        async.eachSeries(qusArr, (ins, cb) => CreateArticle(ins, cb), cb);
+                    },
+                    question: [
+                        'category',
+                        'article',
+                        (dat, cb) =>
+                        {
+                            async.mapSeries(qusArr, (ins, cb) =>
+                            {
+                                delete ins.cache;
+                                CreateQuestion(ins, cb);
+                            }, cb);
+                        }
+                    ],
+                    paper_cat: (cb) =>
+                    {
+                        paperDAL.CreateCategory(ext, paperCatDict, cb);
+                    },
+                    paper: [
+                        'question',
+                        'paper_cat',
+                        ({ question, paper_cat }, cb) =>
+                        {
+                            if (!question.length)
+                            {
+                                return cb();
+                            }
 
-            question.SaveMany(qusArr, cb);
+                            let score = 0;
+                            const qusArr = [];
+                            question.forEach(ins =>
+                            {
+                                score += ins.score;
+                                qusArr.push(ins._id);
+                            });
+
+                            paperDAL.SaveSingle({
+                                name: sheet.name,
+                                category: paper_cat,
+                                score: score,
+                                questions: qusArr,
+                                duration: 0
+                            }, cb);
+                        }
+                    ]
+                }, cb);
+            }, cb);
         });
     }
 };

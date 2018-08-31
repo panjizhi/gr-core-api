@@ -1,12 +1,11 @@
-const common = require('../includes/common');
 const utils = require('../includes/utils');
 const mongodb = require('../drivers/mongodb');
-const question = require('../dal/question.dal');
+const questionDAL = require('../dal/question.dal');
 
 module.exports = {
     GetCategories: (req, cb) =>
     {
-        question.GetCategories(utils.DefaultCallback(cb, 1));
+        questionDAL.GetCategories(utils.DefaultCallback(cb, 1));
     },
     AddCategory: [
         utils.CheckServiceStruct({
@@ -23,7 +22,7 @@ module.exports = {
         (req, cb) =>
         {
             const { name, _parent } = req.body;
-            question.AddCategory(name, _parent, utils.DefaultCallback(cb, 1));
+            questionDAL.AddCategory(name, _parent, utils.DefaultCallback(cb, 1));
         }
     ],
     RemoveSingle: [
@@ -37,7 +36,21 @@ module.exports = {
         (req, cb) =>
         {
             const { _id } = req.body;
-            question.RemoveSingle(_id, utils.DefaultCallback(cb));
+            questionDAL.RemoveMany([_id], utils.DefaultCallback(cb));
+        }
+    ],
+    RemoveMany: [
+        utils.CheckObjectFields({
+            id: {
+                type: 'array',
+                item: 'string'
+            }
+        }),
+        mongodb.ConvertInput({ id: 1 }),
+        (req, cb) =>
+        {
+            const { id } = req.body;
+            questionDAL.RemoveMany(id, utils.DefaultCallback(cb));
         }
     ],
     GetMany: [
@@ -62,7 +75,7 @@ module.exports = {
         (req, cb) =>
         {
             const { name, _category, sorter, start, count } = req.body;
-            question.GetMany(name, _category, sorter, start, count, utils.DefaultCallback(cb, 1));
+            questionDAL.GetMany(name, _category, sorter, start, count, utils.DefaultCallback(cb, 1));
         }
     ],
     GetSingle: [
@@ -76,51 +89,85 @@ module.exports = {
         (req, cb) =>
         {
             const { _id } = req.body;
-            question.GetSingle(_id, (err, dat) =>
+            questionDAL.GetSingle(_id, (err, dat) =>
             {
                 if (err)
                 {
                     return cb(1);
                 }
 
-                dat && question.Troubleshoot(dat);
+                const ctr = [
+                    null,
+                    () => dat.score /= dat.content.count,
+                    null,
+                    null,
+                ][dat.qtype];
+                ctr && ctr();
 
                 cb(0, dat);
             });
         }
     ],
-    SaveSingle: [
-        utils.CheckServiceStruct({
-            type: 'object',
-            fields: {
-                id: {
-                    type: 'string',
-                    null: 1
-                },
-                name: 'string',
-                subject: {
-                    type: 'string',
-                    null: 1
-                },
-                knowledges: {
-                    type: 'array',
-                    item: 'string',
-                    null: 1,
-                    empty: 1
-                },
-                score: 'uint',
-                qtype: 'uint',
-                content: {
-                    type: 'object',
-                    null: 1
-                }
-            }
+    GetNameMany: [
+        utils.CheckObjectFields({
+            name: 'string',
+            count: 'uint'
         }),
-        mongodb.CheckObjectID('id', 'subject'),
         (req, cb) =>
         {
-            const params = req.body;
-            question.SaveSingle(params, utils.DefaultCallback(cb));
+            const { name, count } = req.body;
+            questionDAL.GetNameMany(name, count, utils.DefaultCallback(cb, 1));
+        }
+    ],
+    SaveSingle: [
+        utils.CheckObjectFields({
+            id: {
+                type: 'string',
+                null: 1
+            },
+            name: 'string',
+            subject: {
+                type: 'string',
+                null: 1
+            },
+            knowledges: {
+                type: 'array',
+                item: 'string',
+                null: 1,
+                empty: 1
+            },
+            score: 'uint',
+            picture: {
+                type: 'string',
+                null: 1
+            },
+            explain: {
+                type: 'string',
+                null: 1
+            },
+            qtype: 'uint',
+            content: {
+                type: 'object',
+                null: 1
+            }
+        }),
+        mongodb.ConvertInput({
+            id: 1,
+            subject: 1,
+            knowledges: 1,
+            article: 1
+        }),
+        (req, cb) =>
+        {
+            const { body } = req;
+            const ctr = [
+                null,
+                () => body.score *= body.content.count,
+                null,
+                null,
+            ][body.qtype];
+            ctr && ctr();
+            questionDAL.SaveSingle(body, utils.DefaultCallback(cb));
         }
     ],
     RemoveCategory: [
@@ -134,7 +181,33 @@ module.exports = {
         (req, cb) =>
         {
             const { _id } = req.body;
-            question.RemoveCategory(_id, utils.DefaultCallback(cb));
+            questionDAL.RemoveCategory(_id, utils.DefaultCallback(cb));
+        }
+    ],
+    GetArticleMany: [
+        utils.CheckObjectFields({
+            name: {
+                type: 'string',
+                null: 1
+            },
+            start: 'uint',
+            count: 'uint'
+        }),
+        (req, cb) =>
+        {
+            const { name, start, count } = req.body;
+            questionDAL.GetArticleMany(name, start, count, utils.DefaultCallback(cb, 1));
+        }
+    ],
+    AddArticle: [
+        utils.CheckObjectFields({
+            content: 'string',
+            picture: 'string'
+        }),
+        (req, cb) =>
+        {
+            const { content, picture } = req.body;
+            questionDAL.SaveArticle(content, picture, 0, utils.DefaultCallback(cb));
         }
     ]
 };

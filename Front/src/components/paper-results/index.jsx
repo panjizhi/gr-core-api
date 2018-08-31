@@ -15,7 +15,7 @@ export default class PaperResults extends React.Component
             default_timestamp: defaultTime.unix(),
             id: props.value,
             current: 0,
-            count: 10,
+            count: 50,
             total: 0
         };
     }
@@ -87,9 +87,9 @@ export default class PaperResults extends React.Component
 
     static onNavigateCandidate(ins)
     {
-        window.location.href = SetURIParams(ROUTES.CANDIDATE_ITEM, {
+        window.open(SetURIParams(ROUTES.CANDIDATE_ITEM, {
             q: ins.candidate._id
-        });
+        }));
     }
 
     static ExportResult(record)

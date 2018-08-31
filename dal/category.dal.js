@@ -1,47 +1,75 @@
 const moment = require('moment');
+const common = require('../includes/common');
 const async = require('../includes/workflow');
 const mongodb = require('../drivers/mongodb');
 
 module.exports = {
-    LoopIDs: (coll, _id, cb) =>
+    LoopContent: (coll, _id, cb) =>
     {
-        let result = [_id];
+        const root = common.CompareType(_id, 'array') ? _id : [_id];
 
-        function Find(_ids, cb)
-        {
-            coll.find({
-                parent: {
-                    $in: _ids
-                }
-            }, {
-                _id: 1
-            }).toArray((err, dat) =>
+        async.auto({
+            detail: (cb) =>
             {
-                if (err)
+                mongodb.FindMany(coll, {
+                    _id: { $in: root }
+                }, {
+                    sort: { updated_time: 1 }
+                }, cb);
+            },
+            children: [
+                'detail',
+                ({ detail }, cb) =>
                 {
-                    return cb(err);
+                    let container = detail;
+                    FindChildren(detail, cb);
+
+                    function FindChildren(parents, cb)
+                    {
+                        mongodb.FindMany(coll, {
+                            parent: { $in: parents.map(ins => ins._id) }
+                        }, {
+                            sort: { updated_time: 1 }
+                        }, (err, dat) =>
+                        {
+                            if (err)
+                            {
+                                return cb(err);
+                            }
+
+                            if (dat && dat.length)
+                            {
+                                container = container.concat(dat);
+                                return setImmediate(() => FindChildren(dat, cb));
+                            }
+
+                            cb(null, container);
+                        });
+                    }
                 }
-
-                if (dat.length)
-                {
-                    const _pids = dat.map(ins => ins._id);
-                    result = result.concat(_pids);
-
-                    return Find(_pids, cb);
-                }
-
-                cb();
-            });
-        }
-
-        Find([_id], (err) =>
+            ]
+        }, (err, dat) =>
         {
             if (err)
             {
                 return cb(err);
             }
 
-            cb(null, result);
+            const { children } = dat;
+            cb(null, children);
+        });
+    },
+    LoopIDs: (coll, _id, cb) =>
+    {
+        module.exports.LoopContent(coll, _id, (err, dat) =>
+        {
+            if (err)
+            {
+                return cb(err);
+            }
+
+            const _ids = dat.map(ins => ins._id);
+            cb(null, _ids);
         });
     },
     Add: (collName, name, _pid, cb) =>
@@ -100,5 +128,30 @@ module.exports = {
                 }
             }, cb);
         }, cb);
+    },
+    CreateTree: (value) =>
+    {
+        const dict = {};
+        value.forEach(ins =>
+        {
+            ins.children = [];
+            dict[ins._id.toHexString()] = ins;
+        });
+
+        const top = [];
+        value.forEach(ins => (ins.parent ? dict[ins.parent.toHexString()].children : top).push(ins));
+
+        return top;
+    },
+    CreateNameDict: (tree) =>
+    {
+        const top = {};
+        tree && tree.length && tree.forEach(ins =>
+        {
+            top[ins.name] = ins;
+            ins.child_dict = module.exports.CreateNameDict(ins.children);
+        });
+
+        return top;
     }
 };

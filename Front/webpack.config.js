@@ -64,6 +64,16 @@ const config = {
                     'css-loader',
                     'less-loader'
                 ]
+            },
+            {
+                test: /\.(png|jpe?g|svg|gif)$/,
+                use: {
+                    loader: 'file-loader',
+                    options: {
+                        name: '[name].[hash].[ext]',
+                        outputPath: 'img/'
+                    }
+                }
             }
         ]
     },

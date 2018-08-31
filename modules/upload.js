@@ -7,19 +7,17 @@ const fs = require('fs');
 const cors = require('cors');
 const settings = require('../settings');
 const utils = require('../includes/utils');
-const login = require('../includes/login');
-const qusParser = require('../dal/question-parser');
+const questionParser = require('../dal/question-parser');
+const paperParser = require('../dal/paper-parser');
 
-const cdnStgs = settings.cdn;
-const stoStgs = cdnStgs.storage;
+const stoStgs = settings.storage;
+const __stoPath = utils.GetURLPrefix(stoStgs);
 
 const DIRECT_HTTP_STATUS = [413, 403];
 
 const router = express.Router();
 
 router.use(cors());
-
-//router.use(login.ExpressCheck());
 
 const func = {
     picture: (req, fields, files, cb) =>
@@ -73,7 +71,7 @@ const func = {
                 {
                     fs.unlink(p, () =>
                     {
-                        rlts.push((cdnStgs.protocol || req.protocol) + '://' + cdnStgs.host + cdnStgs.path + stoStgs.path + '/picture/' + name);
+                        rlts.push(__stoPath + '/picture/' + name);
                         cb();
                     });
                 });
@@ -103,14 +101,34 @@ const func = {
                 return cb('Unsupported');
             }
 
-            qusParser.ParseSheets(sheets, cb);
+            questionParser.ParseSheets(sheets, cb);
+        }, (err) =>
+        {
+            cb(err ? 1 : 0);
+        });
+    },
+    paper: (req, fields, files, cb) =>
+    {
+        async.eachLimit(Object.keys(files), 10, (key, cb) =>
+        {
+            const ins = files[key];
+            let sheets = null;
+            try
+            {
+                sheets = excel.parse(ins.path);
+            }
+            catch (ex)
+            {
+                return cb('Unsupported');
+            }
+
+            paperParser.ParseSheets(sheets, cb);
         }, (err) =>
         {
             cb(err ? 1 : 0);
         });
     }
 };
-
 
 const dsdict = {};
 DIRECT_HTTP_STATUS.forEach(ins => dsdict[ins] = 1);

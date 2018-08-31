@@ -41,7 +41,7 @@ class Login extends React.Component
                 });
             }
 
-            window.location.replace(upms && upms.rd ? decodeURIComponent(upms.rd) : ROUTES.QUESTIONS);
+            window.location.replace(upms && upms.rd ? decodeURIComponent(upms.rd) : '/');
         });
     }
 

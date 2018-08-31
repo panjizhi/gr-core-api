@@ -1,0 +1,50 @@
+
+.permission_table
+{
+    max-width: 800px;
+}
+
+.permission_table > div
+{
+    border-bottom: solid 1px #e8e8e8;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.permission_table > div:not(:first-child)
+{
+    height: 54px;
+}
+
+.permission_table > div:first-child
+{
+    padding-bottom: 20px;
+}
+
+.permission_table > div > div
+{
+    padding: 0 20px;
+    align-items: center;
+    display: flex;
+}
+
+.permission_table > div > div:first-child
+{
+    justify-content: flex-start;
+    flex: 5;
+}
+
+.permission_table > div > div:not(:first-child)
+{
+    justify-content: center;
+    flex: 1;
+}
+
+.save
+{
+    padding: 25px 0;
+    width: 800px;
+    justify-content: center;
+    display: flex;
+}

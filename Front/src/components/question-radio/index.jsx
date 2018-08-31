@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Icon, Input, message } from 'antd';
+import { Button, Icon, Input, message, Switch } from 'antd';
 import PictureUpload from '../picture-upload';
 import { IsUndefined } from "../../public/index";
 
@@ -11,19 +11,31 @@ export default class QuestionRadio extends React.Component
     {
         super(props);
 
-        this.state = {
-            options: props.value ? props.value.options : []
-        };
+        this.state = QuestionRadio.InitializeValue(props.value);
     }
 
-    componentWillReceiveProps(nextProps)
+    componentWillReceiveProps(next)
     {
-        this.setState({
-            options: nextProps.value ? nextProps.value.options : [],
+        this.setState(QuestionRadio.InitializeValue(next.value));
+    }
+
+    static InitializeValue(value)
+    {
+        let disorder = false;
+        let options = [];
+        if (value)
+        {
+            disorder = !!value.disorder;
+            options = value.options;
+        }
+
+        return {
+            disorder,
+            options,
             selected_index: undefined,
             title: undefined,
             image: undefined
-        });
+        };
     }
 
     onUploadCompleted(err, dat)
@@ -120,9 +132,11 @@ export default class QuestionRadio extends React.Component
     onValueChanged()
     {
         const { onValueChanged } = this.props;
+        const { disorder, options } = this.state;
         onValueChanged && onValueChanged({
-            options: this.state.options,
-            right: this.state.options.findIndex(ins => !!ins.right)
+            disorder: disorder ? 1 : 0,
+            options,
+            right: options.findIndex(ins => !!ins.right)
         });
     }
 
@@ -140,69 +154,93 @@ export default class QuestionRadio extends React.Component
         });
     }
 
+    onDisorderChange(checked)
+    {
+        this.state.disorder = checked;
+        this.onValueChanged();
+
+        this.setState({});
+    }
+
     render()
     {
-        const { options, selected_index, title, image } = this.state;
+        const { disorder, options, selected_index, title, image } = this.state;
 
         return (
-            <div className="qitem-single">
-                <div>选项</div>
-                <div className="qradio">
-                    <div>
-                        {
-                            options && options.length ? options.map((ins, i) =>
+            <div>
+                <div className="qitem-single">
+                    <div>选项</div>
+                    <div className="qradio">
+                        <div>
                             {
-                                return (
-                                    <div
-                                        key={ i }
-                                        className="qradio-option"
-                                        data-selected={ selected_index === i ? 1 : 0 }
-                                        onClick={ this.onOptionSelected.bind(this, i) }
-                                    >
-                                        <div className="qradio-no">{ String.fromCharCode(65 + i) }</div>
-                                        <div className="qradio-title">{ ins.title }</div>
-                                        <img className="qradio-image" src={ ins.image } />
-                                        <Icon
-                                            className="qradio-right"
-                                            data-right={ ins.right }
-                                            type="check-circle"
-                                            onClick={ this.onRightSelected.bind(this, i) }
-                                        />
-                                        <div className="qradio-remove">
+                                options && options.length ? options.map((ins, i) =>
+                                {
+                                    return (
+                                        <div
+                                            key={ i }
+                                            className="qradio-option"
+                                            data-selected={ selected_index === i ? 1 : 0 }
+                                            onClick={ this.onOptionSelected.bind(this, i) }
+                                        >
+                                            <div className="qradio-no">{ String.fromCharCode(65 + i) }</div>
+                                            <div className="qradio-title">{ ins.title }</div>
+                                            <div className="qradio-image">
+                                                {
+                                                    ins.image ? (
+                                                        <img src={ ins.image } />) : null
+                                                }
+                                            </div>
                                             <Icon
-                                                type="close"
-                                                onClick={ this.onOptionRemoved.bind(this, i) }
+                                                className="qradio-right"
+                                                data-right={ ins.right }
+                                                type="check-circle"
+                                                onClick={ this.onRightSelected.bind(this, i) }
                                             />
+                                            <div className="qradio-remove">
+                                                <Icon
+                                                    type="close"
+                                                    onClick={ this.onOptionRemoved.bind(this, i) }
+                                                />
+                                            </div>
                                         </div>
+                                    )
+                                }) : null
+                            }
+                        </div>
+                        <div>
+                            {
+                                !options || options.length < 10 ? (
+                                    <div className="qradio-append">
+                                        <Input.TextArea
+                                            rows={ 3 }
+                                            autosize={ {
+                                                minRows: 3,
+                                                maxRows: 3
+                                            } }
+                                            placeholder="请输入选项文字(必填)"
+                                            value={ title }
+                                            onChange={ this.onOptionTitleChanged.bind(this) }
+                                        />
+                                        <PictureUpload
+                                            className="qradio-uploader"
+                                            value={ image }
+                                            description="上传选项图片(可选)"
+                                            onCompleted={ this.onUploadCompleted.bind(this) }
+                                        />
+                                        <Button type="primary" onClick={ this.onAddOption.bind(this) }>{ typeof selected_index !== 'undefined' ? '修改' : '添加' }选项</Button>
                                     </div>
-                                )
-                            }) : null
-                        }
+                                ) : null
+                            }
+                        </div>
                     </div>
+                </div>
+                <div className="qitem-single">
+                    <div>选项乱序</div>
                     <div>
-                        {
-                            !options || options.length < 10 ? (
-                                <div className="qradio-append">
-                                    <Input.TextArea
-                                        rows={ 3 }
-                                        autosize={ {
-                                            minRows: 3,
-                                            maxRows: 3
-                                        } }
-                                        placeholder="请输入选项文字(必填)"
-                                        value={ title }
-                                        onChange={ this.onOptionTitleChanged.bind(this) }
-                                    />
-                                    <PictureUpload
-                                        className="qradio-uploader"
-                                        value={ image }
-                                        description="上传选项图片(可选)"
-                                        onCompleted={ this.onUploadCompleted.bind(this) }
-                                    />
-                                    <Button type="primary" onClick={ this.onAddOption.bind(this) }>{ typeof selected_index !== 'undefined' ? '修改' : '添加' }选项</Button>
-                                </div>
-                            ) : null
-                        }
+                        <Switch
+                            checked={ disorder }
+                            onChange={ this.onDisorderChange.bind(this) }
+                        />
                     </div>
                 </div>
             </div>

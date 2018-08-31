@@ -19,9 +19,9 @@ class Results extends React.Component
         const defaultTime = moment('2000-01-01 00:00:00');
         this.state = {
             default_timestamp: defaultTime.unix(),
-            loading: false,
+            loading: true,
             current: 0,
-            count: 10,
+            count: 50,
             total: 0
         };
     }
@@ -32,6 +32,7 @@ class Results extends React.Component
         {
             const rcds = this.FillResults(records);
             this.setState({
+                loading: false,
                 current: 0,
                 total: total,
                 records: rcds
@@ -149,7 +150,7 @@ class Results extends React.Component
                         <div className="qtbl-search">
                             <Input.Search
                                 value={ search }
-                                placeholder="请输入要搜索的试卷或考生名称"
+                                placeholder="请输入要搜索的试卷或学生名称"
                                 onChange={ this.onSearchChange.bind(this) }
                                 onSearch={ this.onSearchResult.bind(this) }
                                 style={ {

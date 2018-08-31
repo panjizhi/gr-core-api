@@ -45,3 +45,19 @@
 {
     flex: 6;
 }
+
+.question-picture
+{
+    width: 180px;
+    height: 80px;
+}
+
+.question-article > div:not(:first-child)
+{
+    margin-top: 12px;
+}
+
+.question-article-picture > img
+{
+    max-height: 150px;
+}

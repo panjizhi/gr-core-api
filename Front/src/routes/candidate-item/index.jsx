@@ -1,12 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, LocaleProvider, message, Select } from 'antd';
+import { Button, LocaleProvider, message, TreeSelect } from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import moment from 'moment';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
 import CandidateResults from '../../components/candidate-results';
-import { AsyncRequest, GetURIParams, ROUTES } from '../../public';
+import { AsyncRequest, DEFAULT_ERR_MESSAGE, GetURIParams, ROUTES } from '../../public';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -28,7 +28,7 @@ class CandidateItem extends React.Component
         const { q } = this.state.upms;
         if (!q)
         {
-            return message.warn('考生信息不存在，即将返回考生列表', undefined, CandidateItem.onNavigateCandidates);
+            return message.warn('学生信息不存在，即将返回学生列表', undefined, CandidateItem.onNavigateCandidates);
         }
 
         async.auto({
@@ -51,17 +51,9 @@ class CandidateItem extends React.Component
                 name: ins.name,
                 openid: ins.openid,
                 registered_time: moment(ins.createTime).format('YYYY-MM-DD HH:mm:ss'),
-                grade_options: cat.tree,
-                grade: ins.grade || undefined,
-                cat_dict: cat.dict,
-                cat_tree: cat.tree,
+                class_tree: cat.tree,
+                classes: ins.classes && ins.classes.length ? ins.classes : undefined
             };
-
-            if (ins.grade)
-            {
-                state.class_options = cat.dict[ins.grade].children;
-                state.xclass = ins.class || undefined;
-            }
 
             this.setState(state);
         });
@@ -78,7 +70,7 @@ class CandidateItem extends React.Component
         {
             if (err || !dat)
             {
-                return message.warn('考生信息读取错误，即将返回考生列表', undefined, CandidateItem.onNavigateCandidates);
+                return message.warn('学生信息读取错误，即将返回学生列表', undefined, CandidateItem.onNavigateCandidates);
             }
 
             cb(null, dat);
@@ -115,55 +107,31 @@ class CandidateItem extends React.Component
         });
     }
 
-    onGradeChanged(value)
+    onClassesChange(classes)
     {
-        const { cat_dict } = this.state;
-
-        this.setState({
-            grade: value,
-            class_options: value ? cat_dict[value].children : null,
-            xclass: null
-        });
-    }
-
-    onClassChanged(value)
-    {
-        this.setState({
-            xclass: value
-        });
+        this.setState({ classes });
     }
 
     onSaveCandidate()
     {
-        const { id, grade, xclass } = this.state;
+        const { id, classes } = this.state;
 
-        this.setState({
-            submitting: true
-        });
+        this.setState({ submitting: true });
 
         const pdt = {
             id: id,
-            grade: grade,
-            class: xclass
+            classes: classes
         };
         AsyncRequest('candidate/SaveSingle', pdt, (err) =>
         {
             if (err)
             {
-                return message.error('保存考生信息失败，请重试', undefined, () =>
-                {
-                    this.setState({
-                        submitting: false
-                    });
-                });
+                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.setState({ submitting: false }));
             }
 
-            message.success('保存考生信息成功', undefined, () =>
-            {
-                this.setState({
-                    submitting: false
-                });
-            });
+            message.success('保存学生信息成功');
+
+            this.setState({ submitting: false });
         });
     }
 
@@ -179,30 +147,24 @@ class CandidateItem extends React.Component
             avatar,
             name,
             openid,
-            grade_options,
-            grade,
-            class_options,
-            xclass,
+            class_tree,
+            classes,
             registered_time,
             submitting
         } = this.state;
 
-        const LoopSelect = (dat) =>
-        {
-            if (!dat || !dat.length)
-            {
-                return null;
-            }
-
-            return dat.map(ins => (
-                <Select.Option
-                    key={ ins.id }
-                    value={ ins.id }
-                >
-                    { ins.name }
-                </Select.Option>
-            ));
-        };
+        const LoopSelect = (dat, level) => !dat || !dat.length ?
+            null :
+            dat.map(ins => <TreeSelect.TreeNode
+                value={ ins.id }
+                title={ ins.name }
+                key={ ins.id }
+                disabled={ level <= 1 }
+            >
+                {
+                    LoopSelect(ins.children, level + 1)
+                }
+            </TreeSelect.TreeNode>);
 
         return (
             <div>
@@ -227,25 +189,20 @@ class CandidateItem extends React.Component
                                 <div>{ registered_time }</div>
                             </div>
                             <div className="qitem-single">
-                                <div>年级</div>
-                                <div className="citem-category">
-                                    <Select
-                                        allowClear={ true }
-                                        value={ grade }
-                                        placeholder="请选择"
-                                        onChange={ this.onGradeChanged.bind(this) }
-                                    >{ LoopSelect(grade_options) }</Select>
-                                </div>
-                            </div>
-                            <div className="qitem-single">
                                 <div>班级</div>
                                 <div className="citem-category">
-                                    <Select
-                                        allowClear={ true }
-                                        value={ xclass }
-                                        placeholder="请选择"
-                                        onChange={ this.onClassChanged.bind(this) }
-                                    >{ LoopSelect(class_options) }</Select>
+                                    <TreeSelect
+                                        placeholder={ `请选择要加入的班级` }
+                                        allowClear
+                                        multiple
+                                        treeDefaultExpandAll
+                                        value={ classes }
+                                        onChange={ this.onClassesChange.bind(this) }
+                                    >
+                                        {
+                                            LoopSelect(class_tree, 1)
+                                        }
+                                    </TreeSelect>
                                 </div>
                             </div>
                             <div>
@@ -254,7 +211,7 @@ class CandidateItem extends React.Component
                                     icon="save"
                                     loading={ submitting }
                                     onClick={ this.onSaveCandidate.bind(this) }
-                                >保存考生信息</Button>
+                                >保存学生信息</Button>
                             </div>
                         </div>
                     </div>

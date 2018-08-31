@@ -1,19 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Input, Layout, LocaleProvider, message, Pagination } from 'antd';
+import { Button, Icon, Input, LocaleProvider, message, Pagination, Popconfirm, Table } from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import moment from 'moment';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
 import Categories from '../../components/categories';
 import CategoryAppend from '../../components/category-append';
-import PaperTable from '../../components/paper-table';
-import { AsyncRequest, IsUndefined, ROUTES } from '../../public';
+import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, PERMISSIONS, ROUTES, SetURIParams } from '../../public';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
-
-const { Header, Content, Sider } = Layout;
 
 class Papers extends React.Component
 {
@@ -24,9 +21,9 @@ class Papers extends React.Component
         const defaultTime = moment('2000-01-01 00:00:00');
         this.state = {
             default_timestamp: defaultTime.unix(),
-            loading: false,
+            loading: true,
             current: 0,
-            count: 10,
+            count: 50,
             total: 0
         };
     }
@@ -34,6 +31,10 @@ class Papers extends React.Component
     componentDidMount()
     {
         async.auto({
+            permissions: (cb) =>
+            {
+                this.DirectReadPermissions(cb);
+            },
             categories: (cb) =>
             {
                 this.DirectReadCategories(cb);
@@ -42,19 +43,34 @@ class Papers extends React.Component
             {
                 this.DirectReadPapers(0, cb);
             }
-        }, (err, { categories, papers }) =>
+        }, (err, { permissions, categories, papers }) =>
         {
             const { dict, tree } = categories;
             const { total, records } = papers;
 
             const rcds = this.FillPapers(records, dict);
             this.setState({
+                loading: false,
+                permissions,
                 dict: dict,
                 tree: tree,
                 current: 0,
                 total: total,
                 records: rcds
             });
+        });
+    }
+
+    DirectReadPermissions(cb)
+    {
+        AsyncRequest('index/GetCurrentPermissions', null, (err, dat) =>
+        {
+            if (err)
+            {
+                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.DirectReadPermissions(cb));
+            }
+
+            cb(null, dat);
         });
     }
 
@@ -233,13 +249,18 @@ class Papers extends React.Component
         this.ReadPapers(page - 1);
     }
 
-    onRemovePaper(record)
+    DirectRemovePapers(idArr)
     {
-        const pdt = {
-            id: record.id
-        };
-        AsyncRequest('paper/RemoveSingle', pdt, () =>
+        const pdt = { id: idArr };
+        AsyncRequest('paper/RemoveMany', pdt, (err) =>
         {
+            if (err)
+            {
+                return message.error(DEFAULT_ERR_MESSAGE);
+            }
+
+            message.success('删除成功');
+
             const { current } = this.state;
             this.ReadPapers(current);
         });
@@ -247,12 +268,46 @@ class Papers extends React.Component
 
     static NewPaper()
     {
-        window.location.href = ROUTES.PAPER_ITEM;
+        window.open(ROUTES.PAPER_ITEM);
+    }
+
+    static EditPaper(record)
+    {
+        window.open(SetURIParams(ROUTES.PAPER_ITEM, { q: record.id }));
+    }
+
+    onRemovePaper(record)
+    {
+        this.DirectRemovePapers([record.id]);
+    }
+
+    onMultiRemovePaper()
+    {
+        const { selected_keys } = this.state;
+        this.DirectRemovePapers(selected_keys);
+    }
+
+    onTableChecked(selectedRowKeys)
+    {
+        this.setState({ selected_keys: selectedRowKeys });
     }
 
     render()
     {
-        const { loading, tree, category, search, records, current, count, total } = this.state;
+        const {
+            permissions,
+            loading,
+            tree,
+            category,
+            search,
+            records,
+            current,
+            count,
+            total,
+            selected_keys
+        } = this.state;
+
+        const { detail } = permissions || {};
 
         return (
             <div>
@@ -272,8 +327,8 @@ class Papers extends React.Component
                             category ? (
                                 <CategoryAppend
                                     value={ category }
-                                    remove={ category.level > 0 }
-                                    append={ category.level < 3 }
+                                    remove={ detail[PERMISSIONS.REMOVE_CLASS] && category.level > 0 }
+                                    append={ detail[PERMISSIONS.CREATE_CLASS] && category.level < 3 }
                                     placeholder={ category.level < 3 ? ((category.level > 0 ? ('为 ' + category.name) : '') + '添加子分类') : null }
                                     onRemove={ this.onRemoveCategory.bind(this) }
                                     onAppend={ this.onAppendCategory.bind(this) }
@@ -282,24 +337,111 @@ class Papers extends React.Component
                         }
                     </div>
                     <div className="content">
-                        <div className="qtbl-search">
-                            <Input.Search
-                                value={ search }
-                                placeholder="请输入要搜索的试卷名称"
-                                onChange={ this.onSearchChange.bind(this) }
-                                onSearch={ this.onSearchPaper.bind(this) }
-                                style={ {
-                                    width: 360
-                                } }
-                            />
+                        <div className="qtbl-header">
+                            <div>
+                                <Button type="primary" icon="plus" onClick={ Papers.NewPaper.bind(this) }>新建试卷</Button>
+                            </div>
+                            <div className="qtbl-search">
+                                <Input.Search
+                                    value={ search }
+                                    placeholder="请输入要搜索的试卷名称"
+                                    onChange={ this.onSearchChange.bind(this) }
+                                    onSearch={ this.onSearchPaper.bind(this) }
+                                    style={ {
+                                        width: 360
+                                    } }
+                                />
+                            </div>
                         </div>
-                        <PaperTable
-                            loading={ loading }
-                            value={ records }
-                            onRemove={ this.onRemovePaper.bind(this) }
-                        />
+                        <div>
+                            <Table
+                                loading={ loading }
+                                dataSource={ records }
+                                pagination={ false }
+                                rowSelection={ {
+                                    selectedRowKeys: selected_keys,
+                                    onChange: this.onTableChecked.bind(this)
+                                } }
+                            >
+                                <Table.Column
+                                    title="名称"
+                                    dataIndex="name"
+                                    key="name"
+                                    width="20%"
+                                    render={ (text, record) => (
+                                        <div onClick={ Papers.EditPaper.bind(this, record) }>
+                                            <a href="#">{ record.name }</a>
+                                        </div>
+                                    ) }
+                                />
+                                <Table.Column
+                                    title="分类"
+                                    dataIndex="category"
+                                    key="category"
+                                    width="14%"
+                                />
+                                <Table.Column
+                                    title="题数"
+                                    dataIndex="questions"
+                                    key="questions"
+                                    width="12%"
+                                />
+                                <Table.Column
+                                    title="时长"
+                                    dataIndex="duration"
+                                    key="duration"
+                                    width="12%"
+                                />
+                                <Table.Column
+                                    title="分数"
+                                    dataIndex="score"
+                                    key="score"
+                                    width="12%"
+                                />
+                                <Table.Column
+                                    title="最后更新时间"
+                                    dataIndex="updated_time"
+                                    key="updated_time"
+                                    width="20%"
+                                />
+                                <Table.Column
+                                    title="操作"
+                                    key="action"
+                                    width="10%"
+                                    render={ (text, record) => (
+                                        detail[PERMISSIONS.REMOVE_PAPER] ? (
+                                            <div>
+                                                <Popconfirm
+                                                    placement="topRight"
+                                                    title={ '是否删除\'' + record.name + '\'？' }
+                                                    onConfirm={ this.onRemovePaper.bind(this, record) }
+                                                    okText=""
+                                                    cancelText="取消"
+                                                >
+                                                    <Icon type="delete" size="small" />
+                                                </Popconfirm>
+                                            </div>
+                                        ) : null
+                                    ) }
+                                />
+                            </Table>
+                        </div>
                         <div className="qtbl-footer">
-                            <Button type="primary" icon="plus" onClick={ Papers.NewPaper.bind(this) }>添加新卷</Button>
+                            {
+                                detail && detail[PERMISSIONS.REMOVE_PAPER] && selected_keys && selected_keys.length
+                                    ? (<div>
+                                        <Popconfirm
+                                            placement="topLeft"
+                                            title={ '是否删选中试题？' }
+                                            onConfirm={ this.onMultiRemovePaper.bind(this) }
+                                            okText="删除"
+                                            cancelText="取消"
+                                        >
+                                            <Button icon="delete">删除</Button>
+                                        </Popconfirm>
+                                    </div>)
+                                    : null
+                            }
                             <div className="qtbl-pagination">
                                 <Pagination
                                     current={ current + 1 }

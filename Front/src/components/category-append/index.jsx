@@ -54,7 +54,7 @@ export default class CategoryAppend extends React.Component
                     您选择了{ name }
                     {
                         remove ? (
-                            <Popconfirm placement="top" title={ '是否移除\'' + name + '\'？' } onConfirm={ this.onConfirm.bind(this) } okText="移除" cancelText="取消">
+                            <Popconfirm placement="top" title={ '是否删除\'' + name + '\'？' } onConfirm={ this.onConfirm.bind(this) } okText="删除" cancelText="取消">
                                 <Icon type="delete" size="small" style={ { marginLeft: '20px' } } />
                             </Popconfirm>
                         ) : null
