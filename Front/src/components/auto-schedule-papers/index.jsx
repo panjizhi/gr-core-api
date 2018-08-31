@@ -244,7 +244,7 @@ export default class AutoSchedulePapers extends React.Component
 
         const LoopSelect = (dat) =>
         {
-            return !dat || !dat.length ? null : dat.map(ins =>
+            return !dat || !dat.length ? [] : dat.map(ins =>
                 <TreeSelect.TreeNode
                     value={ ins.id }
                     title={ ins.name }

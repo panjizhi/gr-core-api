@@ -70,82 +70,10 @@ class ClassReport extends React.Component
         });
     }
 
-    DirectReadCandidates(current, cb)
-    {
-        const { name, category, count } = this.state;
-        const pdt = {
-            name,
-            category,
-            start: current * count,
-            count
-        };
-        AsyncRequest('candidate/GetMany', pdt, (err, dat) =>
-        {
-            if (err)
-            {
-                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.DirectReadCandidates(current, cb));
-            }
-
-            cb(null, dat);
-        });
-    }
-
-    ReadCandidates(current)
-    {
-        if (IsUndefined(current))
-        {
-            current = 0;
-        }
-
-        this.setState({ loading: true });
-
-        this.DirectReadCandidates(current, (err, { total, records }) =>
-        {
-            const { dict } = this.state;
-
-            this.setState({
-                loading: false,
-                current: current,
-                total: total,
-                candidates: this.FillCandidates(records, dict)
-            });
-        });
-    }
-
-    onCategoryChanged(value)
-    {
-        this.state.category = value;
-        this.state.search = null;
-        this.state.name = null;
-        this.ReadCandidates();
-
-        this.setState({});
-    }
-
     onSearchChange(e)
     {
         const search = e.target.value;
         this.setState({ search });
-    }
-
-    onSearch(text)
-    {
-        const value = text || null;
-        if (this.state.name !== value)
-        {
-            this.state.name = value;
-            this.ReadCandidates();
-        }
-    }
-
-    onPageChange(page)
-    {
-        if (page < 1)
-        {
-            return;
-        }
-
-        this.ReadCandidates(page - 1);
     }
 
     onChecked(ins)
@@ -199,8 +127,6 @@ class ClassReport extends React.Component
 
     ReadReport()
     {
-        console.log(this.state);
-
         const { _class, date } = this.state;
         if (!_class || !date)
         {
@@ -221,6 +147,10 @@ class ClassReport extends React.Component
                 }));
             }
 
+            dat.count.forEach((ins, i) => ins.key = i);
+            dat.diligent.forEach((ins, i) => ins.key = i);
+            dat.progress.forEach((ins, i) => ins.key = i);
+
             this.setState({
                 count_report: dat.count,
                 diligent_report: dat.diligent,
@@ -233,7 +163,7 @@ class ClassReport extends React.Component
     {
         const { _class, tree, date, diligent_report, count_report, progress_report } = this.state;
 
-        const LoopRenderNode = (dat) => dat && dat.length ? dat.map(ins => (
+        const LoopRenderNode = (dat) => !dat || !dat.length ? [] : dat.map(ins => (
             <Tree.TreeNode
                 key={ ins.id }
                 id={ ins.id }
@@ -243,7 +173,7 @@ class ClassReport extends React.Component
                     LoopRenderNode(ins.children)
                 }
             </Tree.TreeNode>
-        )) : null;
+        ));
 
         return (
             <div>

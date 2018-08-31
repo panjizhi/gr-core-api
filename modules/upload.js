@@ -10,8 +10,8 @@ const utils = require('../includes/utils');
 const questionParser = require('../dal/question-parser');
 const paperParser = require('../dal/paper-parser');
 
-const cdnStgs = settings.cdn;
-const stoStgs = cdnStgs.storage;
+const stoStgs = settings.storage;
+const __stoPath = utils.GetURLPrefix(stoStgs);
 
 const DIRECT_HTTP_STATUS = [413, 403];
 
@@ -71,7 +71,7 @@ const func = {
                 {
                     fs.unlink(p, () =>
                     {
-                        rlts.push((cdnStgs.protocol || req.protocol) + '://' + cdnStgs.host + cdnStgs.path + stoStgs.path + '/picture/' + name);
+                        rlts.push(__stoPath + '/picture/' + name);
                         cb();
                     });
                 });
@@ -129,7 +129,6 @@ const func = {
         });
     }
 };
-
 
 const dsdict = {};
 DIRECT_HTTP_STATUS.forEach(ins => dsdict[ins] = 1);

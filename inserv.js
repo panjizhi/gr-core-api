@@ -6,7 +6,8 @@ const router = servFact('inserv', [
     'candidate',
     'paper',
     'result',
-    'schedule'
+    'schedule',
+    'system'
 ]);
 
 module.exports = router;

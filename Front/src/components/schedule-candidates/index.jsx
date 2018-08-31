@@ -2,6 +2,7 @@ import React from 'react';
 import { Input, message, Pagination, Table, TreeSelect } from 'antd';
 import moment from 'moment';
 import { AsyncRequest, IsUndefined } from '../../public';
+import { FillCandidates } from '../../public/utils';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -43,7 +44,7 @@ export default class ScheduleCandidates extends React.Component
                 dict: dict,
                 tree: tree,
                 total: total,
-                records: this.FillCandidates(records, dict)
+                records: FillCandidates(records, dict)
             });
         });
     }
@@ -93,7 +94,7 @@ export default class ScheduleCandidates extends React.Component
         {
             const { dict, checked_dict } = this.state;
 
-            const rcds = this.FillCandidates(records, dict);
+            const rcds = FillCandidates(records, dict);
 
             const selectedKeys = [];
             rcds.forEach(ins => ins.id in checked_dict && selectedKeys.push(ins.id));
@@ -104,21 +105,6 @@ export default class ScheduleCandidates extends React.Component
                 total: total,
                 records: rcds
             });
-        });
-    }
-
-    FillCandidates(records, dict)
-    {
-        return records.map(ins =>
-        {
-            return {
-                id: ins._id,
-                key: ins._id,
-                avatar: ins.avatarUrl,
-                name: ins.name,
-                classes: ins.classes ? ins.classes.map(ins => dict[ins].name).join('，') : '无',
-                registered_time: ins.createTime ? moment(ins.createTime).format('YYYY-MM-DD HH:mm:ss') : '较早之前'
-            };
         });
     }
 
@@ -213,7 +199,7 @@ export default class ScheduleCandidates extends React.Component
 
         const LoopSelect = (dat) =>
         {
-            return !dat || !dat.length ? null : dat.map(ins =>
+            return !dat || !dat.length ? [] : dat.map(ins =>
                 <TreeSelect.TreeNode
                     value={ ins.id }
                     title={ ins.name }
@@ -279,8 +265,8 @@ export default class ScheduleCandidates extends React.Component
                         />
                         <Table.Column
                             title="注册时间"
-                            dataIndex="registered_time"
-                            key="registered_time"
+                            dataIndex="created_time"
+                            key="created_time"
                             width="25%"
                         />
                     </Table>

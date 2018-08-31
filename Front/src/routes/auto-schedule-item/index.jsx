@@ -1,11 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Divider, Icon, Input, LocaleProvider, message, Timeline } from 'antd';
+import { Button, Divider, Icon, Input, LocaleProvider, message, Timeline, Select } from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
 import AutoSchedulePapers from '../../components/auto-schedule-papers';
 import { AsyncRequest, GetURIParams, ROUTES } from '../../public';
+import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
 
@@ -18,44 +19,82 @@ class AutoScheduleItem extends React.Component
         this.state = {
             flow: [],
             submitting: false,
-            url_params: GetURIParams()
+            argv: GetURIParams()
         };
     }
 
     componentDidMount()
     {
-        const { url_params } = this.state;
-        if (url_params.q)
-        {
-            this.ReadAutoSchedule((err, dat) =>
+        async.auto({
+            current: (cb) =>
             {
-                if (!dat)
+                this.DirectReadCurrent(cb);
+            },
+            subjects: (cb) =>
+            {
+                this.DirectReadSubjects(cb);
+            },
+            schedule: (cb) =>
+            {
+                const { argv } = this.state;
+                if (!argv.q)
                 {
-                    return;
+                    return cb();
                 }
 
-                dat.flow.forEach(ins => ins.id = ins._id);
+                this.DirectReadAutoSchedule(cb);
+            }
+        }, (err, { current, subjects, schedule }) =>
+        {
+            let display = null;
+            if (current.level > 1)
+            {
+                const dict = subjects.tree.reduce((t, ins) => (t[ins.id] = ins, t), {});
+                display = current.subjects.reduce((t, ins) => (t.push(dict[ins]), t), []);
+            }
+            else
+            {
+                display = subjects.tree;
+            }
 
-                this.setState({
-                    name: dat.name,
-                    flow: dat.flow
-                });
-            });
-        }
+            const state = { subjects: display };
+            if (schedule)
+            {
+                schedule.flow.forEach(ins => ins.id = ins._id);
+                state.name = schedule.name;
+                state.subject = schedule.subject;
+                state.flow = schedule.flow;
+            }
+
+            this.setState(state);
+        });
     }
 
-    ReadAutoSchedule(cb)
+    DirectReadCurrent(cb)
     {
-        const { url_params } = this.state;
+        AsyncRequest('index/GetCurrent', null, (err, dat) =>
+        {
+            if (err)
+            {
+                return setTimeout(() => this.DirectReadCurrent(cb), 1000);
+            }
+
+            cb(null, dat);
+        });
+    }
+
+    DirectReadAutoSchedule(cb)
+    {
+        const { argv } = this.state;
 
         const pdt = {
-            id: url_params.q
+            id: argv.q
         };
         AsyncRequest('schedule/GetAutoSingle', pdt, (err, dat) =>
         {
             if (err || !dat)
             {
-                delete url_params.q;
+                delete argv.q;
                 message.error('读取试卷失败');
 
                 return cb();
@@ -65,11 +104,43 @@ class AutoScheduleItem extends React.Component
         });
     }
 
+    DirectReadSubjects(cb)
+    {
+        AsyncRequest('paper/GetCategories', null, (err, dat) =>
+        {
+            if (err)
+            {
+                return setTimeout(() => this.DirectReadSubjects(cb), 1000);
+            }
+
+            const dict = {};
+            dat.forEach(ins => dict[ins._id] = {
+                id: ins._id,
+                name: ins.name,
+                parent: ins.parent,
+                children: []
+            });
+
+            const tree = [];
+            Object.values(dict).forEach(ins => ins.parent ? dict[ins.parent].children.push(ins) : tree.push(ins));
+
+            cb(null, {
+                dict,
+                tree
+            });
+        });
+    }
+
     onChangeName(e)
     {
         this.setState({
             name: e.target.value
         })
+    }
+
+    onSubjectChange(subject)
+    {
+        this.setState({ subject });
     }
 
     onAppendPaper(checkedDict)
@@ -178,10 +249,15 @@ class AutoScheduleItem extends React.Component
 
     onSave()
     {
-        const { url_params, name, flow } = this.state;
+        const { argv, name, subject, flow } = this.state;
         if (!name)
         {
             return message.warn('请输入名称');
+        }
+
+        if (!subject)
+        {
+            return message.warn('请选择学科');
         }
 
         if (!flow || !flow.length)
@@ -192,8 +268,9 @@ class AutoScheduleItem extends React.Component
         this.setState({ submitting: true });
 
         const pdt = {
-            id: url_params.q,
+            id: argv.q,
             name,
+            subject,
             flow: flow.map(ins => ins.id)
         };
         AsyncRequest('schedule/SaveAutoSingle', pdt, (err) =>
@@ -210,8 +287,9 @@ class AutoScheduleItem extends React.Component
     render()
     {
         const {
-            url_params,
+            subjects,
             name,
+            subject,
             index,
             flow,
             submitting
@@ -305,6 +383,22 @@ class AutoScheduleItem extends React.Component
                                     value={ name }
                                     onChange={ this.onChangeName.bind(this) }
                                 />
+                            </div>
+                        </div>
+                        <div className="qitem-single">
+                            <div>学科</div>
+                            <div>
+                                <Select
+                                    style={ { width: '200px' } }
+                                    placeholder="请选择学科"
+                                    value={ subject }
+                                    onChange={ this.onSubjectChange.bind(this) }
+                                >
+                                    {
+                                        subjects ? subjects.map(ins => (
+                                            <Select.Option key={ ins.id } value={ ins.id }>{ ins.name }</Select.Option>)) : null
+                                    }
+                                </Select>
                             </div>
                         </div>
                         <div className="qitem-single">

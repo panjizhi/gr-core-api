@@ -1,8 +1,8 @@
 {
   "apps": [
     {
-      "name": "GeRun",
-      "script": "./server.js",
+      "name": "GeRunIncludeAssets",
+      "script": "./task/IncludeAssets.js",
       "watch": false,
       "env": {
         "NODE_ENV": "development"

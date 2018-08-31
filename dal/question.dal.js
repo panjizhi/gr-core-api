@@ -132,12 +132,38 @@ module.exports = {
     },
     GetSingle: (_id, cb) =>
     {
-        mongodb.GetCollection(COLLS.QUESTION, (err, coll, cb) =>
+        async.auto({
+            question: (cb) =>
+            {
+                mongodb.FindOne(COLLS.QUESTION, { _id }, cb);
+            },
+            article: [
+                'question',
+                ({ question }, cb) =>
+                {
+                    if (!question.article)
+                    {
+                        return cb();
+                    }
+
+                    mongodb.FindOne(COLLS.ARTICLE, { _id: question.article }, cb);
+                }
+            ]
+        }, (err, dat) =>
         {
-            coll.findOne({
-                _id: _id
-            }, cb);
-        }, cb);
+            if (err)
+            {
+                return cb(err);
+            }
+
+            const { question, article } = dat;
+            if (article)
+            {
+                question.article = article;
+            }
+
+            cb(null, question);
+        });
     },
     GetNameMany: (name, count, cb) =>
     {
@@ -175,6 +201,28 @@ module.exports = {
             name,
             'content.text': desc
         }, cb);
+    },
+    QueryArticle: (content, cb) =>
+    {
+        mongodb.FindOne(COLLS.ARTICLE, { content }, cb);
+    },
+    SaveArticle: (content, picture, external, cb) =>
+    {
+        const ntsmp = moment().unix();
+
+        const doc = {
+            content,
+            picture,
+            external: 1,
+            created_time: ntsmp,
+            updated_time: ntsmp
+        };
+        if (external)
+        {
+            doc.external = 1;
+        }
+
+        mongodb.InsertOne(COLLS.ARTICLE, doc, cb);
     },
     SaveSingle: (doc, cb) =>
     {
@@ -300,5 +348,17 @@ module.exports = {
             options: vArr,
             right: rightIndex
         };
+    },
+    GetArticleMany: (name, start, count, cb) =>
+    {
+        const filter = {};
+        if (name)
+        {
+            filter.name = {
+                $regex: name,
+                $options: 'i'
+            }
+        }
+        mongodb.CallPagingModel(COLLS.ARTICLE, filter, { updated_time: -1 }, start, count, cb);
     }
 };

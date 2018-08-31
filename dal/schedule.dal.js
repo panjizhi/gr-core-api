@@ -7,17 +7,14 @@ const mongodb = require('../drivers/mongodb');
 const notification = require('../dal/notification');
 
 module.exports = {
-    GetMany: (_pid, paperName, _cid, candidateName, done, sorter, start, count, cb) =>
+    GetMany: (_pid, paperName, _cid, candidateName, done, sorter, mcls, start, count, cb) =>
     {
-        let incr = 0;
-        const or = [];
-        let filter = {
-            $or: or
-        };
+        const $and = [];
+        const $or = [];
+
         if (paperName)
         {
-            ++incr;
-            or.push({
+            $or.push({
                 paper_name: {
                     $regex: paperName,
                     $options: 'i'
@@ -26,8 +23,7 @@ module.exports = {
         }
         if (candidateName)
         {
-            ++incr;
-            or.push({
+            $or.push({
                 candidate_name: {
                     $regex: candidateName,
                     $options: 'i'
@@ -36,45 +32,73 @@ module.exports = {
         }
         if (!common.IsUndefined(done) && done !== null)
         {
-            ++incr;
-            filter.isDone = !!done;
+            $and.push({ isDone: !!done });
         }
-        if (incr)
-        {
-            if (!or.length)
-            {
-                delete filter.$or;
-            }
-        }
-        else
-        {
-            filter = {};
-        }
+
         const srt = sorter || {};
-        common.Extend(srt, {
-            updated_time: -1
-        }, 1);
+        common.Extend(srt, { updated_time: -1 }, 1);
 
         async.auto({
-            schedules: (cb) =>
+            candidates: (cb) =>
             {
-                mongodb.CallPagingModel(COLLS.SCHEDULE, filter, srt, start, count, (err, dat) =>
+                if (!mcls)
+                {
+                    return cb();
+                }
+
+                mongodb.FindMany(COLLS.CANDIDATE, { classes: { $in: mcls } }, (err, dat) =>
                 {
                     if (err)
                     {
                         return cb(err);
                     }
 
-                    if (!dat.records.length)
-                    {
-                        return cb(null, dat);
-                    }
+                    $and.push({
+                        student: { $in: dat.map(ins => ins._id) }
+                    });
 
-                    dat.records.forEach(ins => ins.candidate = ins.student);
-
-                    cb(null, dat);
+                    cb();
                 });
             },
+            filter: [
+                'candidates',
+                (dat, cb) =>
+                {
+                    if ($or.length)
+                    {
+                        $and.push({ $or });
+                    }
+
+                    if (!$and.length)
+                    {
+                        return cb();
+                    }
+
+                    cb(null, { $and });
+                }
+            ],
+            schedules: [
+                'filter',
+                ({ filter }, cb) =>
+                {
+                    mongodb.CallPagingModel(COLLS.SCHEDULE, filter, srt, start, count, (err, dat) =>
+                    {
+                        if (err)
+                        {
+                            return cb(err);
+                        }
+
+                        if (!dat.records.length)
+                        {
+                            return cb(null, dat);
+                        }
+
+                        dat.records.forEach(ins => ins.candidate = ins.student);
+
+                        cb(null, dat);
+                    });
+                }
+            ],
             papers: [
                 'schedules',
                 ({ schedules }, cb) =>
@@ -129,12 +153,35 @@ module.exports = {
             }).toArray(cb);
         }, cb);
     },
-    GetAutoMany: (limit, detail, cb) =>
+    GetAutoMany: (limit, detail, login, cb) =>
     {
         async.auto({
-            schedules: (cb) => mongodb.FindMany(COLLS.AUTO_SCHEDULE, null, {
-                sort: { updated_time: -1 }
-            }, cb),
+            schedules: (cb) =>
+            {
+                let query = null;
+                const { level, subjects } = login;
+                if (level > 1)
+                {
+                    if (!subjects || !subjects.length)
+                    {
+                        return cb(null, []);
+                    }
+
+                    const co = { subjects };
+                    if (mongodb.Convert(co, { subjects: 1 }))
+                    {
+                        return cb('Can not convert.');
+                    }
+
+                    query = {
+                        subject: { $in: subjects }
+                    };
+                }
+
+                mongodb.FindMany(COLLS.AUTO_SCHEDULE, query, {
+                    sort: { updated_time: -1 }
+                }, cb);
+            },
             papers: [
                 'schedules',
                 ({ schedules }, cb) =>
@@ -335,14 +382,13 @@ module.exports = {
             coll.insertMany(rlt, cb);
         }, cb);
     },
-    SaveAutoSingle: (_id, name, flow, cb) =>
+    SaveAutoSingle: (_id, name, subject, flow, cb) =>
     {
-        const papers = mongodb.CreateObjectIDArr(flow);
-
         const ntsmp = moment().unix();
         const doc = {
             name,
-            flow: papers,
+            subject,
+            flow,
             created_time: ntsmp,
             updated_time: ntsmp
         };

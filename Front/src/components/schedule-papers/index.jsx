@@ -51,7 +51,7 @@ export default class SchedulePapers extends React.Component
 
     DirectReadCategories(cb)
     {
-        AsyncRequest('paper/GetCategories', null, (err, dat) =>
+        AsyncRequest('paper/GetManageableCategories', null, (err, dat) =>
         {
             if (err)
             {
@@ -70,8 +70,8 @@ export default class SchedulePapers extends React.Component
             Object.values(dict).forEach(ins => ins.parent ? dict[ins.parent].children.push(ins) : tree.push(ins));
 
             cb(null, {
-                dict: dict,
-                tree: tree
+                dict,
+                tree
             });
         });
     }
@@ -125,10 +125,11 @@ export default class SchedulePapers extends React.Component
     {
         const { name, category, count } = this.state;
         const pdt = {
-            name: name,
-            category: category,
+            name,
+            category,
             start: current * count,
-            count: count
+            count,
+            manageable: 1
         };
         AsyncRequest('paper/GetMany', pdt, (err, dat) =>
         {
@@ -218,12 +219,16 @@ export default class SchedulePapers extends React.Component
 
         const LoopSelect = (dat) =>
         {
-            return !dat || !dat.length ? null : dat.map(ins =>
+            return !dat || !dat.length ? [] : dat.map(ins =>
                 <TreeSelect.TreeNode
                     value={ ins.id }
                     title={ ins.name }
                     key={ ins.id }
-                >{ LoopSelect(ins.children) }</TreeSelect.TreeNode>
+                >
+                    {
+                        LoopSelect(ins.children)
+                    }
+                </TreeSelect.TreeNode>
             );
         };
 
@@ -244,7 +249,11 @@ export default class SchedulePapers extends React.Component
                                 placeholder="请选择试卷分类"
                                 value={ category }
                                 onChange={ this.onCategoryChanged.bind(this) }
-                            >{ LoopSelect(tree) }</TreeSelect>
+                            >
+                                {
+                                    LoopSelect(tree)
+                                }
+                            </TreeSelect>
                         </div>
                         <div>
                             <Input.Search

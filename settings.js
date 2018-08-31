@@ -8,20 +8,19 @@ const platform = {
             port: 1001
         },
         console: {
-            host: 'localhost:1001',
+            protocol: 'https',
+            host: 'dev.gerun.mobi',
             path: ''
         },
-        cdn: {
-            protocol: 'http',
-            host: 'localhost:1001',
-            path: '',
-            assets: {
-                path: ''
-            },
-            storage: {
-                path: '/storage',
-                local: 'storage'
-            }
+        assets: {
+            host: 'dev.gerun.mobi',
+            path: ''
+        },
+        storage: {
+            protocol: 'https',
+            host: 'dev.gerun.mobi',
+            path: '/storage',
+            local: 'storage'
         },
         cookie: {
             path: '/',
@@ -41,20 +40,20 @@ const platform = {
             port: 1001
         },
         console: {
-            host: '10.160.193.127:1001',
+            protocol: 'https',
+            host: 'dev.gerun.mobi',
             path: ''
         },
-        cdn: {
-            protocol: 'http',
-            host: '10.160.193.127:1001',
-            path: '',
-            assets: {
-                path: ''
-            },
-            storage: {
-                path: '/storage',
-                local: 'storage'
-            }
+        assets: {
+            protocol: 'https',
+            host: 'dev.gerun.mobi',
+            path: ''
+        },
+        storage: {
+            protocol: 'https',
+            host: 'dev.gerun.mobi',
+            path: '/storage',
+            local: 'storage'
         },
         cookie: {
             path: '/',
@@ -74,20 +73,20 @@ const platform = {
             port: 3000
         },
         console: {
+            protocol: 'https',
             host: 'gerun.mobi',
             path: ''
         },
-        cdn: {
+        assets: {
             protocol: 'https',
             host: 'gerun.mobi',
-            path: '',
-            assets: {
-                path: ''
-            },
-            storage: {
-                path: '/storage',
-                local: 'storage'
-            }
+            path: ''
+        },
+        storage: {
+            protocol: 'https',
+            host: 'gerun.mobi',
+            path: '/storage',
+            local: 'storage'
         },
         cookie: {
             path: '/',

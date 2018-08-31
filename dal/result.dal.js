@@ -2,9 +2,10 @@ const { COLLS } = require('../includes/decl');
 const async = require('../includes/workflow');
 const mongodb = require('../drivers/mongodb');
 const questionDAL = require('../dal/question.dal');
+const candidateDAL = require('../dal/candidate.dal');
 
 module.exports = {
-    GetMany: (_pid, paperName, _cid, candidateName, start, count, cb) =>
+    GetMany: (_pid, paperName, _cid, candidateName, mcls, start, count, cb) =>
     {
         async.auto({
             _papers: (cb) =>
@@ -48,32 +49,49 @@ module.exports = {
                     return cb(null, [_cid]);
                 }
 
-                if (!candidateName)
+                if (candidateName)
+                {
+                    return mongodb.GetCollection(COLLS.CANDIDATE, (err, coll, cb) =>
+                    {
+                        coll.find({
+                            name: {
+                                $regex: candidateName,
+                                $options: 'i'
+                            }
+                        }, {
+                            projection: {
+                                _id: 1
+                            }
+                        }).toArray((err, dat) =>
+                        {
+                            if (err)
+                            {
+                                return cb(err);
+                            }
+
+                            cb(null, dat.map(ins => ins._id));
+                        });
+                    }, cb);
+                }
+
+                if (!mcls)
                 {
                     return cb();
                 }
 
-                mongodb.GetCollection(COLLS.CANDIDATE, (err, coll, cb) =>
+                mongodb.FindMany(COLLS.CANDIDATE, {
+                    classes: { $in: mcls }
+                }, {
+                    projection: { _id: 1 }
+                }, (err, dat) =>
                 {
-                    coll.find({
-                        name: {
-                            $regex: candidateName,
-                            $options: 'i'
-                        }
-                    }, {
-                        projection: {
-                            _id: 1
-                        }
-                    }).toArray((err, dat) =>
+                    if (err)
                     {
-                        if (err)
-                        {
-                            return cb(err);
-                        }
+                        return cb(err);
+                    }
 
-                        cb(null, dat.map(ins => ins._id));
-                    });
-                }, cb);
+                    cb(null, dat.map(ins => ins._id));
+                });
             }
         }, (err, dat) =>
         {

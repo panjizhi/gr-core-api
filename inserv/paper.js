@@ -1,12 +1,41 @@
 const utils = require('../includes/utils');
 const mongodb = require('../drivers/mongodb');
 const paper = require('../dal/paper.dal');
+const { DirectCheck, Check } = require('../includes/login');
 
 module.exports = {
     GetCategories: (req, cb) =>
     {
-        paper.GetCategories(utils.DefaultCallback(cb, 1));
+        paper.GetCategories(null, utils.DefaultCallback(cb, 1));
     },
+    GetManageableCategories: [
+        Check(),
+        (req, cb) =>
+        {
+            let subs = null;
+
+            const { level, subjects } = req.session.login;
+            if (level > 1)
+            {
+                if (subjects)
+                {
+                    const co = { subjects };
+                    if (mongodb.Convert(co, { subjects: 1 }))
+                    {
+                        return cb(1);
+                    }
+
+                    subs = co.subjects;
+                }
+                else
+                {
+                    subs = [];
+                }
+            }
+
+            paper.GetCategories(subs, utils.DefaultCallback(cb, 1));
+        }
+    ],
     AddCategory: [
         utils.CheckServiceStruct({
             type: 'object',
@@ -54,13 +83,46 @@ module.exports = {
                 null: 1
             },
             start: 'uint',
-            count: 'uint'
+            count: 'uint',
+            manageable: {
+                type: 'uint',
+                null: 1
+            }
         }),
         mongodb.CheckObjectID('category', 'question'),
         (req, cb) =>
         {
-            const { name, _category, _question, start, count } = req.body;
-            paper.GetMany(name, _category, _question, start, count, utils.DefaultCallback(cb, 1));
+            const { name, _category, _question, start, count, manageable } = req.body;
+
+            let subs = null;
+            if (manageable)
+            {
+                if (DirectCheck(req))
+                {
+                    return cb(1);
+                }
+
+                const { level, subjects } = req.session.login;
+                if (level > 1)
+                {
+                    if (subjects)
+                    {
+                        const co = { subjects };
+                        if (mongodb.Convert(co, { subjects: 1 }))
+                        {
+                            return cb(1);
+                        }
+
+                        subs = co.subjects;
+                    }
+                    else
+                    {
+                        subs = [];
+                    }
+                }
+            }
+
+            paper.GetMany(subs, name, _category, _question, start, count, utils.DefaultCallback(cb, 1));
         }
     ],
     GetSingle: [

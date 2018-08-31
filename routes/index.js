@@ -15,5 +15,8 @@ module.exports = {
     'auto-schedules': (req, cb) => cb(),
     'auto-schedule-item': (req, cb) => cb(),
     'candidate-report': (req, cb) => cb(),
-    'class-report': (req, cb) => cb()
+    'class-report': (req, cb) => cb(),
+    'users': (req, cb) => cb(),
+    'permissions': (req, cb) => cb(),
+    'options': (req, cb) => cb()
 };

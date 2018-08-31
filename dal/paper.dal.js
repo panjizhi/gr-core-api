@@ -6,15 +6,15 @@ const category = require('../dal/category.dal');
 const notification = require('../dal/notification');
 
 module.exports = {
-    GetCategories: (cb) =>
+    GetCategories: (subjects, cb) =>
     {
-        mongodb.GetCollection(COLLS.PAPER_CATEGORY, (err, coll, cb) =>
+        if (subjects)
         {
-            coll.find({}, {
-                sort: {
-                    updated_time: 1
-                }
-            }).toArray(cb);
+            return category.LoopContent(COLLS.PAPER_CATEGORY, subjects, cb);
+        }
+
+        mongodb.FindMany(COLLS.PAPER_CATEGORY, null, {
+            sort: { updated_time: 1 }
         }, cb);
     },
     AddCategory: (name, _pid, cb) =>
@@ -60,20 +60,17 @@ module.exports = {
             category.Remove(COLLS.PAPER_CATEGORY, _ids, cb);
         });
     },
-    GetMany: (name, _cid, _qid, start, count, cb) =>
+    GetMany: (subjects, name, _cid, _qid, start, count, cb) =>
     {
         async.auto({
             categories: (cb) =>
             {
-                if (!_cid)
+                if (_cid || subjects)
                 {
-                    return cb();
+                    return category.LoopIDs(COLLS.PAPER_CATEGORY, _cid || subjects, cb);
                 }
 
-                mongodb.GetCollection(COLLS.PAPER_CATEGORY, (err, coll, cb) =>
-                {
-                    category.LoopIDs(coll, _cid, cb);
-                }, cb);
+                cb();
             }
         }, (err, dat) =>
         {
@@ -121,13 +118,29 @@ module.exports = {
                         return cb();
                     }
 
-                    mongodb.GetCollection(COLLS.QUESTION, (err, coll, cb) =>
+                    mongodb.FindMany(COLLS.QUESTION, {
+                        _id: { $in: paper.questions }
+                    }, cb);
+                }
+            ],
+            articles: [
+                'questions',
+                ({ questions }, cb) =>
+                {
+                    if (!questions || !questions.length)
                     {
-                        coll.find({
-                            _id: {
-                                $in: paper.questions
-                            }
-                        }).toArray(cb);
+                        return cb();
+                    }
+
+                    const aids = [];
+                    questions.forEach(ins => ins.article && aids.push(ins.article));
+                    if (!aids.length)
+                    {
+                        return cb();
+                    }
+
+                    mongodb.FindMany(COLLS.ARTICLE, {
+                        _id: { $in: aids }
                     }, cb);
                 }
             ]
@@ -138,7 +151,7 @@ module.exports = {
                 return cb(err);
             }
 
-            const { paper, questions } = dat;
+            const { paper, questions, articles } = dat;
             if (!questions || !questions.length)
             {
                 paper.questions = null;
@@ -156,6 +169,7 @@ module.exports = {
             });
 
             paper.questions = qarr;
+            paper.articles = articles;
 
             cb(null, paper);
         });

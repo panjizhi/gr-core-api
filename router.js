@@ -3,12 +3,56 @@ const bodyParser = require('body-parser');
 const _ = require('underscore');
 const settings = require('./settings');
 const common = require('./includes/common');
+const utils = require('./includes/utils');
+const { PERMISSIONS } = require('./includes/decl');
+const userDAL = require('./dal/user.dal');
+
+const __permissionMap = {
+    'questions': PERMISSIONS.QUESTIONS,
+    'question-item': PERMISSIONS.QUESTIONS,
+    'papers': PERMISSIONS.PAPERS,
+    'paper-item': PERMISSIONS.PAPERS,
+    'candidates': PERMISSIONS.CANDIDATES,
+    'candidate-item': PERMISSIONS.CANDIDATES,
+    'results': PERMISSIONS.RESULTS,
+    'schedules': PERMISSIONS.SCHEDULES,
+    'schedule': PERMISSIONS.NEW_SCHEDULE,
+    'auto-schedules': PERMISSIONS.AUTO_SCHEDULE,
+    'auto-schedule-item': PERMISSIONS.AUTO_SCHEDULE,
+    'candidate-report': PERMISSIONS.CANDIDATE_REPORT,
+    'class-report': PERMISSIONS.CLASS_REPORT,
+    'import': PERMISSIONS.IMPORT,
+    'users': PERMISSIONS.USERS,
+    'permissions': PERMISSIONS.PERMISSIONS,
+    'options': PERMISSIONS.OPTIONS
+};
+
+const __normalPages = [
+    'setting'
+];
+
+const __pagesWeight = {
+    'questions': 1,
+    'papers': 2,
+    'candidates': 3,
+    'results': 4,
+    'schedules': 5,
+    'schedule': 6,
+    'auto-schedules': 7,
+    'candidate-report': 8,
+    'class-report': 9,
+    'import': 10,
+    'users': 11,
+    'permissions': 12,
+    'options': 13
+};
+
+const __pagesMap = {};
+common.ObjectForEach(__pagesWeight, (k, v) => __pagesMap[__permissionMap[k]] = k);
 
 const router = express.Router();
 
-router.use(bodyParser.urlencoded({
-    extended: true
-}));
+router.use(bodyParser.urlencoded({ extended: true }));
 
 const routes = [
     'index'
@@ -16,21 +60,50 @@ const routes = [
 
 const notFound = '404';
 const fallback = 'login';
-const index = 'questions';
+const index = GetIndexPage;
 const direct = [];
 
-const cslStgs = settings.console;
-const cdnStgs = settings.cdn;
-const astStgs = cdnStgs.assets;
-
-const assets = '//' + cdnStgs.host + cdnStgs.path + astStgs.path + '/assets';
+const assets = utils.GetURLPrefix(settings.assets) + '/assets';
 const js = assets + '/js';
 const css = assets + '/css';
-const hrd = cslStgs.path;
+const img = assets + '/img';
+const hrd = utils.GetURLPrefix(settings.console);
+
+function GetIndexPage(req, cb)
+{
+    const { level } = req.session.login;
+    userDAL.GetPermissions(level, (err, dat) =>
+    {
+        if (err)
+        {
+            return cb(notFound);
+        }
+
+        let page = null;
+        let weight = 0;
+        common.ObjectForEach(dat, (k, v) =>
+        {
+            if (!v)
+            {
+                return true;
+            }
+
+            const p = __pagesMap[k];
+            const w = __pagesWeight[p];
+            if (!weight || w < weight)
+            {
+                weight = w;
+                page = p;
+            }
+        });
+
+        cb(page || notFound);
+    });
+}
 
 function CreatePath()
 {
-    let value = [];
+    const value = [];
     for (let i = 0, l = arguments.length; i < l; ++i)
     {
         const instc = arguments[i];
@@ -45,8 +118,31 @@ function CreatePath()
 
 function CheckFallback(req, cb)
 {
-    let login = req.session.login;
-    cb(login ? 0 : 1);
+    cb(req.session.login ? 0 : 1);
+}
+
+function CheckPrivilege(req, path, cb)
+{
+    if (__normalPages.indexOf(path) >= 0)
+    {
+        return cb();
+    }
+
+    const { level } = req.session.login;
+    userDAL.GetPermissions(level, (err, dat) =>
+    {
+        if (err)
+        {
+            return cb(err);
+        }
+
+        if (!dat[__permissionMap[path]])
+        {
+            return cb(1);
+        }
+
+        cb();
+    });
 }
 
 function Route(routes, prefix)
@@ -81,6 +177,7 @@ function Route(routes, prefix)
                         dat.assets = assets;
                         dat.js = js;
                         dat.css = css;
+                        dat.img = img;
                         dat.hrd = hrd;
 
                         res.render(path, dat);
@@ -93,12 +190,18 @@ function Route(routes, prefix)
                     {
                         if (err || value)
                         {
-                            return Redirect(res, common.SetURIParams(fallback, {
-                                rd: encodeURIComponent(req.url)
-                            }));
+                            return Redirect(req, res, fallback);
                         }
 
-                        Render(req, res, next);
+                        CheckPrivilege(req, path, (err) =>
+                        {
+                            if (err)
+                            {
+                                return Redirect(req, res, index);
+                            }
+
+                            Render(req, res, next);
+                        });
                     });
                 }
 
@@ -111,7 +214,7 @@ function Route(routes, prefix)
                             return Render(req, res, next);
                         }
 
-                        Redirect(res, index);
+                        Redirect(req, res, index);
                     });
                 }
 
@@ -149,19 +252,33 @@ function Route(routes, prefix)
 
 router.get('/', (req, res) =>
 {
-    Redirect(res, index);
+    CheckFallback(req, (err, value) =>
+    {
+        if (err || value)
+        {
+            return Redirect(req, res, fallback);
+        }
+
+        Redirect(req, res, index);
+    });
+
 });
 
 Route(routes);
 
-router.use(function (req, res)
+router.use((req, res) =>
 {
-    Redirect(res, notFound);
+    Redirect(req, res, notFound);
 });
 
-function Redirect(res, path)
+function Redirect(req, res, path)
 {
-    res.redirect('/' + CreatePath(cslStgs.path, path));
+    common.CompareType(path, 'function') ? path(req, (value) => Exec(value)) : Exec(path);
+
+    function Exec(path)
+    {
+        res.redirect(hrd + '/' + path);
+    }
 }
 
 module.exports = router;

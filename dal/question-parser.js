@@ -166,6 +166,36 @@ const CreateCategory = (qus, nameDict, cb) =>
     }, () => cb());
 };
 
+const CreateArticle = (qus, cb) =>
+{
+    const { cache } = qus;
+    const { article, ap } = cache;
+    if (!article)
+    {
+        return cb();
+    }
+
+    questionDAL.QueryArticle(article, (err, dat) =>
+    {
+        if (!err && dat)
+        {
+            qus.article = dat._id;
+            return cb();
+        }
+
+        questionDAL.SaveArticle(article, ap, 1, (err, dat) =>
+        {
+            if (err)
+            {
+                return cb(err);
+            }
+
+            qus.article = dat;
+            cb();
+        });
+    });
+};
+
 const CreateQuestion = (qus, cb) =>
 {
     const func = [
@@ -205,7 +235,7 @@ const CreateQuestion = (qus, cb) =>
             cb(null, {
                 _id: qus._id || dat,
                 score: qus.score
-            })
+            });
         });
     });
 };
@@ -213,14 +243,27 @@ const CreateQuestion = (qus, cb) =>
 const ROW_PARSER = [
     (row, value) =>
     {
-        if (row.length < 15)
+        if (row.length < 16)
         {
             return 1;
         }
 
-        let ci = 1;
+        const { cache, contact } = value;
 
-        const name = row[ci++];
+        const subjectIndex = 1;
+        const articleIndex = 2;
+        const nameIndex = 3;
+        const optionIndex = 4;
+        const answerIndex = 10;
+        const explainIndex = 11;
+        const sectionIndex = 12;
+        const knowledgeIndex = 13;
+        const weightIndex = 14;
+        const scoreIndex = 15;
+        const disorderIndex = 16;
+        const apIndex = 17;
+
+        const name = row[nameIndex];
         if (!name)
         {
             return 1;
@@ -228,14 +271,14 @@ const ROW_PARSER = [
 
         value.name = name;
 
-        FillCategory(row, ci++, ci++, ci++, value);
+        FillCategory(row, subjectIndex, sectionIndex, knowledgeIndex, value);
 
         const content = {};
 
         const options = [];
         for (let i = 0; i < 6; ++i)
         {
-            let opt = row[ci++];
+            let opt = row[optionIndex + i];
             if (opt)
             {
                 opt = opt.toString().trim();
@@ -245,7 +288,7 @@ const ROW_PARSER = [
                 }
             }
         }
-        const right = row[ci++];
+        const right = row[answerIndex];
         if (right)
         {
             const code = right.charCodeAt();
@@ -263,15 +306,33 @@ const ROW_PARSER = [
 
         content.options = options;
 
-        const weight = ParseUInt(row, ci++);
+        const weight = ParseUInt(row, weightIndex);
         value.weight = weight > 5 ? 5 : weight;
 
-        const score = ParseUInt(row, ci++);
+        const score = ParseUInt(row, scoreIndex);
         value.score = score === 0 ? 1 : score;
 
-        content.disorder = row[ci++] === '是' ? 1 : 0;
+        content.disorder = row[disorderIndex] !== '否' ? 1 : 0;
 
         value.content = content;
+
+        value.explain = row[explainIndex];
+
+        const article = row.length > articleIndex ? row[articleIndex] : null;
+        const aup = !article;
+        cache.article = aup ? contact.article : article;
+        if (!aup)
+        {
+            contact.article = article;
+        }
+
+        const ap = row.length > apIndex ? row[apIndex] : null;
+        const apup = !ap;
+        cache.ap = apup ? contact.ap : ap;
+        if (!apup)
+        {
+            contact.ap = ap;
+        }
 
         return 0;
     },
@@ -283,6 +344,8 @@ const ROW_PARSER = [
         }
 
         let ci = 1;
+
+        const { cache, contact } = value;
 
         const name = row[ci++];
         if (!name)
@@ -313,26 +376,77 @@ const ROW_PARSER = [
         content.count = ParseUInt(row, ci++);
 
         const answers = [];
-        while (1)
+        for (let i = 0; i < content.count; ++i)
         {
-            if (ci >= row.length)
+            const idx = ci++;
+            if (row.length <= idx)
             {
-                break;
+                return 1;
             }
 
-            const ans = row[ci];
+            const ans = row[idx];
             if (!ans)
             {
-                break;
+                return 1;
             }
 
             answers.push(ans);
-            ci++;
         }
 
         content.answers = answers;
 
         value.content = content;
+
+        const pictureIndex = ci++;
+        if (row.length > pictureIndex)
+        {
+            const v = row[pictureIndex];
+            if (v)
+            {
+                value.picture = v;
+                value.external = 1;
+            }
+        }
+
+        const explainIndex = ci++;
+        if (row.length > explainIndex)
+        {
+            const v = row[explainIndex];
+            if (v)
+            {
+                value.explain = v;
+            }
+        }
+
+        const articleIndex = ci++;
+        if (row.length > articleIndex)
+        {
+            const v = row[articleIndex];
+            if (v)
+            {
+                const up = v === '同上';
+                cache.article = up ? contact.article : v;
+                if (!up)
+                {
+                    contact.article = v;
+                }
+            }
+        }
+
+        const apIndex = ci++;
+        if (row.length > apIndex)
+        {
+            const v = row[apIndex];
+            if (v)
+            {
+                const up = v === '同上';
+                cache.ap = up ? contact.ap : v;
+                if (!up)
+                {
+                    contact.ap = v;
+                }
+            }
+        }
 
         return 0;
     }
@@ -364,6 +478,7 @@ module.exports = {
                 const qusArr = [];
                 const ext = {};
 
+                const contact = {};
                 sheet.data.forEach(row =>
                 {
                     if (!row || !row.length)
@@ -384,7 +499,10 @@ module.exports = {
                             return true;
                     }
 
-                    const value = { cache: {} };
+                    const value = {
+                        cache: {},
+                        contact
+                    };
                     if (!ROW_PARSER[qtype](row, value, ext))
                     {
                         value.qtype = qtype;
@@ -411,8 +529,13 @@ module.exports = {
                     {
                         async.eachSeries(qusArr, (ins, cb) => CreateCategory(ins, nameDict, cb), cb);
                     },
+                    article: (cb) =>
+                    {
+                        async.eachSeries(qusArr, (ins, cb) => CreateArticle(ins, cb), cb);
+                    },
                     question: [
                         'category',
+                        'article',
                         (dat, cb) =>
                         {
                             async.mapSeries(qusArr, (ins, cb) =>

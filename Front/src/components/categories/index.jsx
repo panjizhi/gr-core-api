@@ -58,19 +58,16 @@ export default class Categories extends React.Component
 
         const LoopRenderNode = (dat, level) =>
         {
-            if (!dat || !dat.length)
-            {
-                return null;
-            }
-
-            return dat.map((item) => (
+            return !dat || !dat.length ? [] : dat.map((item) => (
                 <Tree.TreeNode
                     key={ item.id }
                     id={ item.id }
                     title={ item.name }
                     level={ level }
                 >
-                    { item.children ? LoopRenderNode(item.children, level + 1) : null }
+                    {
+                        LoopRenderNode(item.children, level + 1)
+                    }
                 </Tree.TreeNode>
             ));
         };

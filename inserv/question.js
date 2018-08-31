@@ -137,6 +137,14 @@ module.exports = {
                 empty: 1
             },
             score: 'uint',
+            picture: {
+                type: 'string',
+                null: 1
+            },
+            explain: {
+                type: 'string',
+                null: 1
+            },
             qtype: 'uint',
             content: {
                 type: 'object',
@@ -146,7 +154,8 @@ module.exports = {
         mongodb.ConvertInput({
             id: 1,
             subject: 1,
-            knowledges: 1
+            knowledges: 1,
+            article: 1
         }),
         (req, cb) =>
         {
@@ -173,6 +182,32 @@ module.exports = {
         {
             const { _id } = req.body;
             questionDAL.RemoveCategory(_id, utils.DefaultCallback(cb));
+        }
+    ],
+    GetArticleMany: [
+        utils.CheckObjectFields({
+            name: {
+                type: 'string',
+                null: 1
+            },
+            start: 'uint',
+            count: 'uint'
+        }),
+        (req, cb) =>
+        {
+            const { name, start, count } = req.body;
+            questionDAL.GetArticleMany(name, start, count, utils.DefaultCallback(cb, 1));
+        }
+    ],
+    AddArticle: [
+        utils.CheckObjectFields({
+            content: 'string',
+            picture: 'string'
+        }),
+        (req, cb) =>
+        {
+            const { content, picture } = req.body;
+            questionDAL.SaveArticle(content, picture, 0, utils.DefaultCallback(cb));
         }
     ]
 };

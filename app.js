@@ -16,7 +16,7 @@ app.set('view engine', 'ejs');
 
 // uncomment after placing your favicon in /public
 app.use('/assets', cors(), express.static('assets'));
-const strgStgs = settings.cdn.storage;
+const strgStgs = settings.storage;
 app.use(strgStgs.path, cors(), express.static(strgStgs.local));
 
 app.use(cookieParser());

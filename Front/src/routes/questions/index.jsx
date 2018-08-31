@@ -6,7 +6,7 @@ import Title from '../../components/title';
 import Nav from '../../components/nav';
 import Categories from '../../components/categories';
 import CategoryAppend from '../../components/category-append';
-import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, ROUTES, SetURIParams } from '../../public';
+import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, PERMISSIONS, ROUTES, SetURIParams } from '../../public';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -18,7 +18,7 @@ class Questions extends React.Component
         super(props);
 
         this.state = {
-            loading: false,
+            loading: true,
             current: 0,
             count: 50,
             total: 0,
@@ -29,6 +29,10 @@ class Questions extends React.Component
     componentDidMount()
     {
         async.auto({
+            permissions: (cb) =>
+            {
+                this.DirectReadPermissions(cb);
+            },
             categories: (cb) =>
             {
                 this.DirectReadCategories(cb);
@@ -37,19 +41,34 @@ class Questions extends React.Component
             {
                 this.DirectReadQuestions(0, cb);
             }
-        }, (err, { categories, questions }) =>
+        }, (err, { permissions, categories, questions }) =>
         {
             const { dict, tree } = categories;
             const { total, records } = questions;
 
             const rcds = this.FillQuestions(records, dict);
             this.setState({
+                loading: false,
+                permissions,
                 dict: dict,
                 tree: tree,
                 current: 0,
                 total: total,
                 records: rcds
             });
+        });
+    }
+
+    DirectReadPermissions(cb)
+    {
+        AsyncRequest('index/GetCurrentPermissions', null, (err, dat) =>
+        {
+            if (err)
+            {
+                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.DirectReadPermissions(cb));
+            }
+
+            cb(null, dat);
         });
     }
 
@@ -314,7 +333,21 @@ class Questions extends React.Component
 
     render()
     {
-        const { loading, tree, category, search, records, current, count, total, search_data_source, selected_keys } = this.state;
+        const {
+            permissions,
+            loading,
+            tree,
+            category,
+            search,
+            records,
+            current,
+            count,
+            total,
+            search_data_source,
+            selected_keys
+        } = this.state;
+
+        const { detail } = permissions || {};
 
         return (
             <div>
@@ -334,8 +367,8 @@ class Questions extends React.Component
                             category ? (
                                 <CategoryAppend
                                     value={ category }
-                                    remove={ category.level > 0 }
-                                    append={ category.level < 3 }
+                                    remove={ detail[PERMISSIONS.REMOVE_SUBJECT] && category.level > 0 }
+                                    append={ detail[PERMISSIONS.CREATE_SUBJECT] && category.level < 3 }
                                     placeholder={ category.level < 3 ? ((category.level > 0 ? ('为 ' + category.name) : '') + '添加 ' + ['学科', '章节', '知识点'][category.level]) : null }
                                     onRemove={ this.onRemoveCategory.bind(this) }
                                     onAppend={ this.onAppendCategory.bind(this) }
@@ -434,24 +467,26 @@ class Questions extends React.Component
                                     key="action"
                                     width="10%"
                                     render={ (text, record) => (
-                                        <div>
-                                            <Popconfirm
-                                                placement="topRight"
-                                                title={ '是否删除\'' + record.name + '\'？' }
-                                                onConfirm={ this.onRemoveQuestion.bind(this, record) }
-                                                okText="删除"
-                                                cancelText="取消"
-                                            >
-                                                <Icon type="delete" size="small" />
-                                            </Popconfirm>
-                                        </div>
+                                        detail[PERMISSIONS.REMOVE_QUESTION] ? (
+                                            <div>
+                                                <Popconfirm
+                                                    placement="topRight"
+                                                    title={ '是否删除\'' + record.name + '\'？' }
+                                                    onConfirm={ this.onRemoveQuestion.bind(this, record) }
+                                                    okText="删除"
+                                                    cancelText="取消"
+                                                >
+                                                    <Icon type="delete" size="small" />
+                                                </Popconfirm>
+                                            </div>
+                                        ) : null
                                     ) }
                                 />
                             </Table>
                         </div>
                         <div className="qtbl-footer">
                             {
-                                selected_keys && selected_keys.length
+                                detail && detail[PERMISSIONS.REMOVE_QUESTION] && selected_keys && selected_keys.length
                                     ? (<div>
                                         <Popconfirm
                                             placement="topLeft"

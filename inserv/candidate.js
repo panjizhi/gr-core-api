@@ -1,12 +1,23 @@
 const utils = require('../includes/utils');
 const mongodb = require('../drivers/mongodb');
 const candidateDAL = require('../dal/candidate.dal');
+const { Check } = require('../includes/login');
 
 module.exports = {
-    GetCategories: (req, cb) =>
-    {
-        candidateDAL.GetCategories(utils.DefaultCallback(cb, 1));
-    },
+    GetCategories: [
+        Check(),
+        (req, cb) =>
+        {
+            const { classes } = req.session.login;
+            const co = { classes };
+            if (mongodb.Convert(co, { classes: 1 }))
+            {
+                return cb(1);
+            }
+
+            candidateDAL.GetCategories(co.classes, utils.DefaultCallback(cb, 1));
+        }
+    ],
     AddCategory: [
         utils.CheckServiceStruct({
             type: 'object',
@@ -40,22 +51,27 @@ module.exports = {
         }
     ],
     GetMany: [
-        utils.CheckServiceStruct({
-            type: 'object',
-            fields: {
-                category: {
-                    type: 'string',
-                    null: 1
-                },
-                start: 'uint',
-                count: 'uint'
-            }
+        utils.CheckObjectFields({
+            category: {
+                type: 'string',
+                null: 1
+            },
+            start: 'uint',
+            count: 'uint'
         }),
+        Check(),
         mongodb.CheckObjectID('category', 'question'),
         (req, cb) =>
         {
+            const { classes } = req.session.login;
+            const co = { classes };
+            if (mongodb.Convert(co, { classes: 1 }))
+            {
+                return cb(1);
+            }
+
             const { name, _category, start, count } = req.body;
-            candidateDAL.GetMany(name, _category, start, count, utils.DefaultCallback(cb, 1));
+            candidateDAL.GetMany(name, _category, co.classes, start, count, utils.DefaultCallback(cb, 1));
         }
     ],
     GetSingle: [

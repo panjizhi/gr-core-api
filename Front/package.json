@@ -30,7 +30,7 @@
     "webpack-dev-server": "^2.9.7"
   },
   "scripts": {
-    "start": "webpack-dev-server --host 0.0.0.0 --inline",
+    "start": "webpack-dev-server --host 0.0.0.0 --inline --https --cert /etc/pki/tls/certs/1_dev.gerun.mobi_bundle.crt --key /etc/pki/tls/certs/2_dev.gerun.mobi.key",
     "build": "webpack --config webpack.build.config.js"
   }
 }

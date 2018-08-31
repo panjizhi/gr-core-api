@@ -1,0 +1,49 @@
+
+.content
+{
+    padding-top: 12px !important;
+}
+
+.form-root
+{
+    padding-top: 12px;
+    max-width: 500px;
+}
+
+.form-root > div
+{
+    min-height: 32px;
+    display: flex;
+}
+
+.form-root > div:not(:first-child)
+{
+    margin-top: 24px;
+}
+
+.form-root > div > div:first-child,
+.form-root > div > div:last-child
+{
+    height: 100%;
+    align-items: center;
+    display: flex;
+}
+
+.form-root > div > div:first-child
+{
+    line-height: 32px;
+    justify-content: flex-end;
+    flex: 6;
+}
+
+.form-root > div > div:first-child:not(:empty)::after
+{
+    content: ":";
+}
+
+.form-root > div > div:last-child
+{
+    margin-left: 12px;
+    justify-content: flex-start;
+    flex: 18;
+}

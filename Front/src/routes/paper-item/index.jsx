@@ -556,8 +556,8 @@ class PaperItem extends React.Component
                                     <TimePicker
                                         allowEmpty={ false }
                                         value={ duration }
-                                        minuteStep={ 5 }
-                                        secondStep={ 30 }
+                                        minuteStep={ 1 }
+                                        secondStep={ 5 }
                                         onChange={ this.onDurationChange.bind(this) }
                                     />
                                 </div>

@@ -5,34 +5,44 @@ const candidateDAL = require('../dal/candidate.dal');
 const paperDAL = require('../dal/paper.dal');
 const resultDAL = require('../dal/result.dal');
 const scheduleDAL = require('../dal/schedule.dal');
+const systemDAL = require('../dal/system.dal');
 
-const __WAIT_SECONDS = 30 * 60;
-const __MAX_COUNT = 3;
+const __WAIT_SECONDS = 5 * 60;
+const __MAX_COUNT = 2;
 const __RIGHT_COUNT = 2;
 
 ftt.Start(0, 10, (cb) =>
 {
     const tsmp = moment().unix();
-    const t = tsmp - __WAIT_SECONDS;
 
     async.auto({
-        queue: (cb) =>
+        time: (cb) =>
         {
-            scheduleDAL.GetAutoQueueMany(t, (err, dat) =>
+            systemDAL.GetOptions('auto-schedule', (err, dat) =>
             {
-                if (err)
-                {
-                    return cb(err);
-                }
-
-                if (!dat.length)
-                {
-                    return cb('Not found.');
-                }
-
-                cb(null, dat);
+                cb(null, tsmp - (err || !dat || !dat.duration ? __WAIT_SECONDS : dat.duration));
             });
         },
+        queue: [
+            'time',
+            ({ time }, cb) =>
+            {
+                scheduleDAL.GetAutoQueueMany(time, (err, dat) =>
+                {
+                    if (err)
+                    {
+                        return cb(err);
+                    }
+
+                    if (!dat.length)
+                    {
+                        return cb('Not found.');
+                    }
+
+                    cb(null, dat);
+                });
+            }
+        ],
         auto: [
             'queue',
             ({ queue }, cb) => scheduleDAL.GetAutoMany(0, 0, (err, dat) =>
@@ -95,12 +105,6 @@ ftt.Start(0, 10, (cb) =>
                         return cb();
                     }
 
-                    if (result.score < paper.score)
-                    {
-                        ExecSchedule(_pid);
-                        return cb();
-                    }
-
                     resultDAL.GetSinglePaperMany(_cid, _pid, code, __MAX_COUNT, (err, dat) =>
                     {
                         if (err)
@@ -115,7 +119,7 @@ ftt.Start(0, 10, (cb) =>
                         }
 
                         let count = 0;
-                        dat.forEach(rlt => rlt.score === rlt.paper.score && ++count);
+                        dat.forEach(rlt => (rlt.score >= rlt.paper.score - 1) && ++count);
 
                         if (count < __RIGHT_COUNT)
                         {

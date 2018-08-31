@@ -6,16 +6,51 @@ const mongodb = require('../drivers/mongodb');
 const category = require('../dal/category.dal');
 
 module.exports = {
-    GetCategories: (cb) =>
+    GetCategories: (classes, cb) =>
     {
-        mongodb.GetCollection(COLLS.CANDIDATE_CATEGORY, (err, coll, cb) =>
+        if (!classes)
         {
-            coll.find({}, {
-                sort: {
-                    updated_time: 1
+            return mongodb.FindMany(COLLS.CANDIDATE_CATEGORY, null, {
+                sort: { updated_time: 1 }
+            }, cb);
+        }
+
+        async.auto({
+            detail: (cb) =>
+            {
+                mongodb.FindMany(COLLS.CANDIDATE_CATEGORY, {
+                    _id: { $in: classes }
+                }, {
+                    sort: { updated_time: 1 }
+                }, cb);
+            },
+            grades: [
+                'detail',
+                ({ detail }, cb) =>
+                {
+                    const _pids = detail.map(ins => ins.parent);
+
+                    mongodb.FindMany(COLLS.CANDIDATE_CATEGORY, {
+                        _id: { $in: _pids }
+                    }, {
+                        sort: { updated_time: 1 }
+                    }, cb);
                 }
-            }).toArray(cb);
-        }, cb);
+            ]
+        }, (err, dat) =>
+        {
+            if (err)
+            {
+                return cb(err);
+            }
+
+            const { detail, grades } = dat;
+            const arr = [];
+            grades.forEach(ins => arr.push(ins));
+            detail.forEach(ins => arr.push(ins));
+
+            cb(null, arr);
+        });
     },
     AddCategory: (name, _pid, cb) =>
     {
@@ -51,20 +86,25 @@ module.exports = {
             category.Remove(COLLS.CANDIDATE_CATEGORY, _ids, cb);
         });
     },
-    GetMany: (name, _cid, start, count, cb) =>
+    GetMany: (name, _cid, mcls, start, count, cb) =>
     {
         async.auto({
             categories: (cb) =>
             {
-                if (!_cid)
+                if (_cid)
                 {
-                    return cb();
+                    return mongodb.GetCollection(COLLS.CANDIDATE_CATEGORY, (err, coll, cb) =>
+                    {
+                        category.LoopIDs(coll, _cid, cb);
+                    }, cb);
                 }
 
-                mongodb.GetCollection(COLLS.CANDIDATE_CATEGORY, (err, coll, cb) =>
+                if (mcls)
                 {
-                    category.LoopIDs(coll, _cid, cb);
-                }, cb);
+                    return cb(null, mcls);
+                }
+
+                cb();
             }
         }, (err, dat) =>
         {
@@ -101,10 +141,7 @@ module.exports = {
     },
     GetSingleByOPENID: (openid, cb) =>
     {
-        mongodb.GetCollection(COLLS.CANDIDATE, (err, coll, cb) =>
-        {
-            coll.findOne({ openid: openid }, cb);
-        }, cb);
+        mongodb.FindOne(COLLS.CANDIDATE, { openid }, cb);
     },
     CreateSingle: (openid, name, avatar, cb) =>
     {

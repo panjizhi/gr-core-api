@@ -1,14 +1,16 @@
 import superagent from 'superagent';
 
-export const INTERFACE_PREFIX = 'https://gerun.mobi/';
+export const INTERFACE_PREFIX = 'https://dev.gerun.mobi/';
 
-const suffix = '';
+const suffix = '.html';
 
 export const UPLOAD_ADDRESS = `${INTERFACE_PREFIX}open/upload/picture`;
 
 export const DOWNLOAD_ADDRESS = `${INTERFACE_PREFIX}open/download`;
 
 export const DEFAULT_ERR_MESSAGE = '网络繁忙，请稍后再试';
+
+export const DEFAULT_SUCCESS_MESSAGE = '操作成功';
 
 export const ROUTES = {
     LOGIN: `login${suffix}`,
@@ -26,7 +28,34 @@ export const ROUTES = {
     AUTO_SCHEDULE_ITEM: `auto-schedule-item${suffix}`,
     CANDIDATE_REPORT: `candidate-report${suffix}`,
     CLASS_REPORT: `class-report${suffix}`,
-    IMPORT: `import${suffix}`
+    IMPORT: `import${suffix}`,
+    USERS: `users${suffix}`,
+    PERMISSIONS: `permissions${suffix}`,
+    OPTIONS: `options${suffix}`
+};
+
+export const PERMISSIONS = {
+    CREATE_CLASS: 'create_class',
+    REMOVE_CLASS: 'remove_class',
+    CREATE_SUBJECT: 'create_subject',
+    REMOVE_SUBJECT: 'remove_subject',
+    QUESTIONS: 'questions',
+    REMOVE_QUESTION: 'remove_question',
+    PAPERS: 'papers',
+    REMOVE_PAPER: 'remove_paper',
+    CANDIDATES: 'candidates',
+    REMOVE_CANDIDATE: 'remove_candidate',
+    RESULTS: 'results',
+    SCHEDULES: 'schedules',
+    REMOVE_SCHEDULE: 'remove_schedule',
+    NEW_SCHEDULE: 'new_schedule',
+    AUTO_SCHEDULE: 'auto_schedule',
+    CANDIDATE_REPORT: 'candidate_report',
+    CLASS_REPORT: 'class_report',
+    IMPORT: 'import',
+    USERS: 'users',
+    PERMISSIONS: 'permissions',
+    OPTIONS: 'options'
 };
 
 export function AsyncRequest(action, params, cb)
@@ -210,4 +239,21 @@ export function CompareType(value, type)
 export function IsUndefined(value)
 {
     return CompareType(value, 'undefined');
+}
+
+export function ObjectReduce(ins, cb, total)
+{
+    let result = typeof total === 'undefined' ? 0 : total;
+    for (const key in ins)
+    {
+        if (!ins.hasOwnProperty(key))
+        {
+            continue;
+        }
+
+        const val = ins[key];
+        result = cb(result, key, val);
+    }
+
+    return result;
 }

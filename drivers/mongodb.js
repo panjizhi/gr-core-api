@@ -4,24 +4,27 @@ const common = require('../includes/common');
 const utils = require('../includes/utils');
 const async = require('../includes/workflow');
 
+const __mstgs = settings.database.mongodb;
+
 const client = mongodb.MongoClient;
 const ObjectID = mongodb.ObjectID;
 
+const url = 'mongodb://' + __mstgs.host + ':' + __mstgs.port;
 let __db = null;
 
-const __mstgs = settings.database.mongodb;
-
-const url = 'mongodb://' + __mstgs.host + ':' + __mstgs.port;
-client.connect(url, (err, client) =>
+(function Connect()
 {
-    if (err)
+    client.connect(url, (err, client) =>
     {
-        console.log(err);
-        return;
-    }
+        if (err)
+        {
+            console.log(err);
+            return setTimeout(Connect, 1000);
+        }
 
-    __db = client.db(__mstgs.database);
-});
+        __db = client.db(__mstgs.database);
+    });
+})();
 
 module.exports = {
     CreateObjectID: (str) =>
@@ -134,10 +137,15 @@ module.exports = {
     },
     FindMany: (coll, query, options, cb) =>
     {
-        if (!cb)
+        if (!cb && typeof options === 'function')
         {
             cb = options;
             options = null;
+        }
+
+        if (!query)
+        {
+            query = {};
         }
 
         module.exports.GetCollection(coll, (err, coll, cb) =>

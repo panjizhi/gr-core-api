@@ -7,11 +7,11 @@ import Title from '../../components/title';
 import Nav from '../../components/nav';
 import Calendar from '../../components/calendar';
 import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined } from '../../public';
+import { FillCandidates } from '../../public/utils';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
 import { message } from "antd/lib/index";
-import PaperTable from "../../components/paper-table";
 
 class CandidateReport extends React.Component
 {
@@ -49,21 +49,9 @@ class CandidateReport extends React.Component
                 tree,
                 current: 0,
                 total,
-                candidates: this.FillCandidates(records, dict)
+                candidates: FillCandidates(records, dict)
             });
         });
-    }
-
-    FillCandidates(records, dict)
-    {
-        return records.map(ins => ({
-            id: ins._id,
-            key: ins._id,
-            avatar: ins.avatarUrl,
-            name: ins.name,
-            classes: ins.classes ? ins.classes.map(ins => dict[ins].name).join('，') : '无',
-            registered_time: ins.createTime ? moment(ins.createTime).format('YYYY-MM-DD HH:mm:ss') : '较早之前'
-        }));
     }
 
     DirectReadCategories(cb)
@@ -130,7 +118,7 @@ class CandidateReport extends React.Component
                 loading: false,
                 current: current,
                 total: total,
-                candidates: this.FillCandidates(records, dict)
+                candidates: FillCandidates(records, dict)
             });
         });
     }
@@ -314,7 +302,7 @@ class CandidateReport extends React.Component
 
         const LoopSelect = (dat) =>
         {
-            return !dat || !dat.length ? null : dat.map(ins =>
+            return !dat || !dat.length ? [] : dat.map(ins =>
                 <TreeSelect.TreeNode
                     value={ ins.id }
                     title={ ins.name }
@@ -366,7 +354,7 @@ class CandidateReport extends React.Component
                                             <div className="cdd-detail">
                                                 <div>
                                                     <div>{ ins.name }</div>
-                                                    <div className="cdd-light">{ ins.registered_time }</div>
+                                                    <div className="cdd-light">{ ins.created_time }</div>
                                                 </div>
                                                 <div>
                                                     <div>{ ins.classes }</div>

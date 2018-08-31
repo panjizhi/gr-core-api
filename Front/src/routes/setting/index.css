@@ -1,4 +1,38 @@
-.content-container
+.content
 {
-    width: 25%;
+    display: flex;
+}
+
+.content > div
+{
+    flex: 1;
+}
+
+.content > div:not(:first-child)
+{
+    margin-left: 25px;
+}
+
+.content > div > div:first-child
+{
+    font-size: 18px;
+    padding: 0 25px;
+    font-weight: bold;
+}
+
+.password-container
+{
+    width: 400px;
+}
+
+.avatar
+{
+    width: 200px;
+    height: 200px;
+}
+
+.save-avatar
+{
+    margin-top: 25px;
+    width: 200px;
 }

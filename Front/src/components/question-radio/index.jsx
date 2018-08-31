@@ -184,7 +184,12 @@ export default class QuestionRadio extends React.Component
                                         >
                                             <div className="qradio-no">{ String.fromCharCode(65 + i) }</div>
                                             <div className="qradio-title">{ ins.title }</div>
-                                            <img className="qradio-image" src={ ins.image } />
+                                            <div className="qradio-image">
+                                                {
+                                                    ins.image ? (
+                                                        <img src={ ins.image } />) : null
+                                                }
+                                            </div>
                                             <Icon
                                                 className="qradio-right"
                                                 data-right={ ins.right }

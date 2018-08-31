@@ -493,5 +493,22 @@ module.exports = {
             default:
                 return struct.toString();
         }
+    },
+    ObjectForEach: (ins, cb) =>
+    {
+        for (const key in ins)
+        {
+            if (!ins.hasOwnProperty(key))
+            {
+                continue;
+            }
+
+            const val = ins[key];
+            const r = cb(key, val);
+            if (r === false)
+            {
+                break;
+            }
+        }
     }
 };

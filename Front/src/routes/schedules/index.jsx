@@ -5,7 +5,8 @@ import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import moment from 'moment';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
-import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, ROUTES, SetURIParams } from '../../public';
+import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, ROUTES, SetURIParams, PERMISSIONS } from '../../public';
+import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
 
@@ -16,7 +17,7 @@ class Schedules extends React.Component
         super(props);
 
         this.state = {
-            loading: false,
+            loading: true,
             done: null,
             current: 0,
             count: 50,
@@ -26,14 +27,38 @@ class Schedules extends React.Component
 
     componentDidMount()
     {
-        this.DirectReadSchedules(0, (err, { total, records }) =>
+        async.auto({
+            permissions: (cb) =>
+            {
+                this.DirectReadPermissions(cb);
+            },
+            schedules: (cb) =>
+            {
+                this.DirectReadSchedules(0, cb);
+            }
+        }, (err, { permissions, schedules: { total, records } }) =>
         {
             const rcds = Schedules.FillSchedules(records);
             this.setState({
+                loading: false,
+                permissions,
                 current: 0,
                 total: total,
                 records: rcds
             });
+        });
+    }
+
+    DirectReadPermissions(cb)
+    {
+        AsyncRequest('index/GetCurrentPermissions', null, (err, dat) =>
+        {
+            if (err)
+            {
+                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.DirectReadPermissions(cb));
+            }
+
+            cb(null, dat);
         });
     }
 
@@ -221,7 +246,19 @@ class Schedules extends React.Component
 
     render()
     {
-        const { loading, search, done, records, current, count, total, selected_keys } = this.state;
+        const {
+            permissions,
+            loading,
+            search,
+            done,
+            records,
+            current,
+            count,
+            total,
+            selected_keys
+        } = this.state;
+
+        const { detail } = permissions || {};
 
         return (
             <div>
@@ -233,13 +270,17 @@ class Schedules extends React.Component
                 <div className="content-layout">
                     <div className="content">
                         <div className="qtbl-header">
-                            <div>
-                                <Button
-                                    type="primary"
-                                    icon="plus"
-                                    onClick={ Schedules.NewSchedule.bind(this) }
-                                >新建派发</Button>
-                            </div>
+                            {
+                                detail && detail[PERMISSIONS.NEW_SCHEDULE] ? (
+                                    <div>
+                                        <Button
+                                            type="primary"
+                                            icon="plus"
+                                            onClick={ Schedules.NewSchedule.bind(this) }
+                                        >新建派发</Button>
+                                    </div>
+                                ) : null
+                            }
                             <div className="qtbl-search">
                                 <Input.Group compact>
                                     <Select
@@ -346,24 +387,26 @@ class Schedules extends React.Component
                                     key="action"
                                     width="12%"
                                     render={ (text, record) => (
-                                        <div>
-                                            <Popconfirm
-                                                placement="topRight"
-                                                title={ '是否删除此项派发？' }
-                                                onConfirm={ this.onRemoveSchedule.bind(this, record) }
-                                                okText="删除"
-                                                cancelText="取消"
-                                            >
-                                                <Icon type="delete" size="small" />
-                                            </Popconfirm>
-                                        </div>
+                                        detail[PERMISSIONS.REMOVE_SCHEDULE] ? (
+                                            <div>
+                                                <Popconfirm
+                                                    placement="topRight"
+                                                    title={ '是否删除此项派发？' }
+                                                    onConfirm={ this.onRemoveSchedule.bind(this, record) }
+                                                    okText="删除"
+                                                    cancelText="取消"
+                                                >
+                                                    <Icon type="delete" size="small" />
+                                                </Popconfirm>
+                                            </div>
+                                        ) : null
                                     ) }
                                 />
                             </Table>
                         </div>
                         <div className="qtbl-footer">
                             {
-                                selected_keys && selected_keys.length
+                                detail && detail[PERMISSIONS.REMOVE_SCHEDULE] && selected_keys && selected_keys.length
                                     ? (<div>
                                         <Popconfirm
                                             placement="topLeft"

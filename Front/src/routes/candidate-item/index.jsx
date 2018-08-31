@@ -153,15 +153,16 @@ class CandidateItem extends React.Component
             submitting
         } = this.state;
 
-        const LoopSelect = (dat) => !dat || !dat.length ?
+        const LoopSelect = (dat, level) => !dat || !dat.length ?
             null :
             dat.map(ins => <TreeSelect.TreeNode
                 value={ ins.id }
                 title={ ins.name }
                 key={ ins.id }
+                disabled={ level <= 1 }
             >
                 {
-                    LoopSelect(ins.children)
+                    LoopSelect(ins.children, level + 1)
                 }
             </TreeSelect.TreeNode>);
 
@@ -199,7 +200,7 @@ class CandidateItem extends React.Component
                                         onChange={ this.onClassesChange.bind(this) }
                                     >
                                         {
-                                            LoopSelect(class_tree)
+                                            LoopSelect(class_tree, 1)
                                         }
                                     </TreeSelect>
                                 </div>

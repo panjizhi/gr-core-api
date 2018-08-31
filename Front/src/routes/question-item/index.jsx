@@ -1,15 +1,28 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Divider, Input, InputNumber, LocaleProvider, message, Radio, Rate, Select, TreeSelect } from 'antd';
+import {
+    Button,
+    Divider,
+    Input,
+    InputNumber,
+    LocaleProvider,
+    message,
+    Radio,
+    Rate,
+    Select,
+    TreeSelect,
+    Modal
+} from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
+import PictureUpload from '../../components/picture-upload';
 import QuestionRadio from '../../components/question-radio';
 import QuestionBlanks from '../../components/question-blanks';
 import QuestionCalculate from '../../components/question-calculate';
 import QuestionArticle from '../../components/question-article';
 import QuestionPapers from '../../components/question-papers';
-import { AsyncRequest, GetURIParams, ROUTES } from '../../public';
+import { AsyncRequest, GetURIParams, ROUTES, DEFAULT_ERR_MESSAGE, DEFAULT_SUCCESS_MESSAGE } from '../../public';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -68,6 +81,9 @@ class QuestionItem extends React.Component
                 state.qname = qus.name;
                 state.weight = qus.weight;
                 state.score = qus.score;
+                state.picture = qus.picture;
+                state.explain = qus.explain;
+                state.article = qus.article;
 
                 const { subject } = qus;
                 if (subject && subject in dict)
@@ -202,7 +218,19 @@ class QuestionItem extends React.Component
 
     onSaveQuestion()
     {
-        const { qid, qname, qtype, subject, knowledges, weight, score, values } = this.state;
+        const {
+            qid,
+            qname,
+            qtype,
+            subject,
+            knowledges,
+            weight,
+            score,
+            picture,
+            explain,
+            article,
+            values
+        } = this.state;
         if (!qname)
         {
             return message.warn('请填写题目基本信息');
@@ -257,39 +285,80 @@ class QuestionItem extends React.Component
             return message.warn(msg);
         }
 
-        this.setState({
-            submitting: true
-        });
+        this.setState({ submitting: true });
 
         const pdt = {
             id: qid,
             name: qname,
-            subject: subject,
-            knowledges: knowledges,
-            weight: weight,
-            score: score,
-            qtype: qtype,
+            subject,
+            knowledges,
+            weight,
+            score,
+            picture,
+            explain,
+            qtype,
             content: ctn
         };
+        if (article)
+        {
+            pdt.article = article._id;
+        }
+
         AsyncRequest('question/SaveSingle', pdt, (err) =>
         {
             if (err)
             {
-                return message.error('保存失败', undefined, () =>
-                {
-                    this.setState({
-                        submitting: false
-                    });
-                });
+                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.setState({ submitting: false }));
             }
 
-            message.success('保存成功', () => window.location.href = ROUTES.QUESTIONS);
+            message.success(DEFAULT_SUCCESS_MESSAGE, () => window.location.href = ROUTES.QUESTIONS);
         });
+    }
+
+    onExplainChange(e)
+    {
+        this.setState({ explain: e.target.value });
+    }
+
+    onUploadCompleted(err, dat)
+    {
+        if (err)
+        {
+            return message.error(err);
+        }
+
+        this.setState({ picture: dat });
+    }
+
+    onSaveArticle()
+    {
+
+    }
+
+    onArticleClose()
+    {
+        this.setState({ modal_visible: 0 });
     }
 
     render()
     {
-        const { qid, qname, qtype, subject_options, subject, knowledge_options, knowledges, weight, score, values, submitting } = this.state;
+        const {
+            qid,
+            qname,
+            qtype,
+            subject_options,
+            subject,
+            knowledge_options,
+            knowledges,
+            weight,
+            score,
+            explain,
+            picture,
+            article,
+            values,
+            submitting,
+            modal_visible
+        } = this.state;
 
         return (
             <div>
@@ -398,6 +467,45 @@ class QuestionItem extends React.Component
                                 </div>
                             </div>
                         </div>
+                        <div className="qitem-single qitem-double">
+                            <div>
+                                <div>图片</div>
+                                <div>
+                                    <PictureUpload
+                                        className="question-picture"
+                                        value={ picture }
+                                        onCompleted={ this.onUploadCompleted.bind(this) }
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <div>详细解析</div>
+                                <div>
+                                    <Input.TextArea
+                                        rows={ 3 }
+                                        autosize={ {
+                                            minRows: 3,
+                                            maxRows: 3
+                                        } }
+                                        value={ explain }
+                                        onChange={ this.onExplainChange.bind(this) }
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        {
+                            article ? (<div className="qitem-single">
+                                <div>题干</div>
+                                <div className="question-article">
+                                    <div>{ article.content }</div>
+                                    {
+                                        article.picture ? (<div className="question-article-picture">
+                                            <img src={ article.picture } />
+                                        </div>) : null
+                                    }
+                                </div>
+                            </div>) : null
+                        }
                         <div className="qitem-single">
                             <div>类型</div>
                             <div>
@@ -447,6 +555,13 @@ class QuestionItem extends React.Component
                         />
                     </div>
                 </div>
+                <Modal
+                    visible={ !!modal_visible }
+                    width="800px"
+                    onOk={ this.onSaveArticle.bind(this) }
+                    onCancel={ this.onArticleClose.bind(this) }
+                >
+                </Modal>
             </div>
         )
     }

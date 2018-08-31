@@ -19,7 +19,7 @@ class Results extends React.Component
         const defaultTime = moment('2000-01-01 00:00:00');
         this.state = {
             default_timestamp: defaultTime.unix(),
-            loading: false,
+            loading: true,
             current: 0,
             count: 50,
             total: 0
@@ -32,6 +32,7 @@ class Results extends React.Component
         {
             const rcds = this.FillResults(records);
             this.setState({
+                loading: false,
                 current: 0,
                 total: total,
                 records: rcds

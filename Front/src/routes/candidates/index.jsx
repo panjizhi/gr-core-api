@@ -2,12 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { Button, Icon, Input, LocaleProvider, message, Pagination, Popconfirm, Table, TreeSelect } from 'antd';
 import zh_CN from 'antd/lib/locale-provider/zh_CN';
-import moment from 'moment';
 import Title from '../../components/title';
 import Nav from '../../components/nav';
 import Categories from '../../components/categories';
 import CategoryAppend from '../../components/category-append';
-import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, ROUTES, SetURIParams } from '../../public';
+import { AsyncRequest, DEFAULT_ERR_MESSAGE, IsUndefined, PERMISSIONS, ROUTES, SetURIParams } from '../../public';
+import { FillCandidates } from '../../public/utils';
 import async from '../../public/workflow';
 import '../../public/index.css';
 import './index.css';
@@ -19,9 +19,9 @@ class Candidates extends React.Component
         super(props);
 
         this.state = {
-            loading: false,
+            loading: true,
             current: 0,
-            count: 8,
+            count: 50,
             total: 0,
             checked_dict: {},
             joining: false,
@@ -32,6 +32,10 @@ class Candidates extends React.Component
     componentDidMount()
     {
         async.auto({
+            permissions: (cb) =>
+            {
+                this.DirectReadPermissions(cb);
+            },
             categories: (cb) =>
             {
                 this.DirectReadCategories(cb);
@@ -40,19 +44,34 @@ class Candidates extends React.Component
             {
                 this.DirectReadCandidates(0, cb);
             }
-        }, (err, { categories, candidates }) =>
+        }, (err, { permissions, categories, candidates }) =>
         {
             const { dict, tree } = categories;
             const { total, records } = candidates;
 
-            const rcds = this.FillCandidates(records, dict);
+            const rcds = FillCandidates(records, dict);
             this.setState({
+                loading: false,
+                permissions,
                 dict: dict,
                 tree: tree,
                 current: 0,
                 total: total,
                 records: rcds
             });
+        });
+    }
+
+    DirectReadPermissions(cb)
+    {
+        AsyncRequest('index/GetCurrentPermissions', null, (err, dat) =>
+        {
+            if (err)
+            {
+                return message.error(DEFAULT_ERR_MESSAGE, undefined, () => this.DirectReadPermissions(cb));
+            }
+
+            cb(null, dat);
         });
     }
 
@@ -112,7 +131,7 @@ class Candidates extends React.Component
         {
             const { dict } = this.state;
 
-            const rcds = this.FillCandidates(records, dict);
+            const rcds = FillCandidates(records, dict);
             this.setState({
                 loading: false,
                 current: current,
@@ -143,22 +162,6 @@ class Candidates extends React.Component
             }
 
             cb(null, dat);
-        });
-    }
-
-    FillCandidates(records, dict)
-    {
-        return records.map(ins =>
-        {
-            return {
-                id: ins._id,
-                key: ins._id,
-                avatar: ins.avatarUrl,
-                name: ins.name,
-                classes: ins.classes ? ins.classes.map(ins => dict[ins].name).join('，') : '无',
-                openid: ins.openid,
-                created_time: ins.createTime ? moment(ins.createTime).format('YYYY-MM-DD HH:mm:ss') : '较早之前'
-            };
         });
     }
 
@@ -315,17 +318,34 @@ class Candidates extends React.Component
 
     render()
     {
-        const { loading, tree, category, search, records, current, count, total, selected_keys, classes, joining, removing } = this.state;
+        const {
+            permissions,
+            loading,
+            tree,
+            category,
+            search,
+            records,
+            current,
+            count,
+            total,
+            selected_keys,
+            classes,
+            joining,
+            removing
+        } = this.state;
 
-        const LoopSelect = (dat) => !dat || !dat.length ?
+        const { detail } = permissions || {};
+
+        const LoopSelect = (dat, level) => !dat || !dat.length ?
             null :
             dat.map(ins => <TreeSelect.TreeNode
                 value={ ins.id }
                 title={ ins.name }
                 key={ ins.id }
+                disabled={ level <= 1 }
             >
                 {
-                    LoopSelect(ins.children)
+                    LoopSelect(ins.children, level + 1)
                 }
             </TreeSelect.TreeNode>);
 
@@ -427,17 +447,19 @@ class Candidates extends React.Component
                                     key="action"
                                     width="10%"
                                     render={ (text, record) => (
-                                        <div>
-                                            <Popconfirm
-                                                placement="topRight"
-                                                title={ '是否删除此位用户？' }
-                                                onConfirm={ this.onRemove.bind(this, record) }
-                                                okText="删除"
-                                                cancelText="取消"
-                                            >
-                                                <Icon type="delete" size="small" />
-                                            </Popconfirm>
-                                        </div>
+                                        detail[PERMISSIONS.REMOVE_CANDIDATE] ? (
+                                            <div>
+                                                <Popconfirm
+                                                    placement="topRight"
+                                                    title={ '是否删除此位学生？' }
+                                                    onConfirm={ this.onRemove.bind(this, record) }
+                                                    okText="删除"
+                                                    cancelText="取消"
+                                                >
+                                                    <Icon type="delete" size="small" />
+                                                </Popconfirm>
+                                            </div>
+                                        ) : null
                                     ) }
                                 />
                             </Table>
@@ -459,7 +481,7 @@ class Candidates extends React.Component
                                                 onChange={ this.onClassesChange.bind(this) }
                                             >
                                                 {
-                                                    LoopSelect(tree)
+                                                    LoopSelect(tree, 1)
                                                 }
                                             </TreeSelect>
                                         </div>
@@ -472,20 +494,24 @@ class Candidates extends React.Component
                                                 onClick={ this.onJoinClasses.bind(this) }
                                             >加入</Button>
                                         </div>
-                                        <div>
-                                            <Popconfirm
-                                                placement="topLeft"
-                                                title={ '是否删选中用户？' }
-                                                onConfirm={ this.onMultiRemove.bind(this) }
-                                                okText="删除"
-                                                cancelText="取消"
-                                            >
-                                                <Button
-                                                    icon="delete"
-                                                    loading={ removing }
-                                                >删除</Button>
-                                            </Popconfirm>
-                                        </div>
+                                        {
+                                            detail && detail[PERMISSIONS.REMOVE_CANDIDATE] ? (
+                                                <div>
+                                                    <Popconfirm
+                                                        placement="topLeft"
+                                                        title={ '是否删选中用户？' }
+                                                        onConfirm={ this.onMultiRemove.bind(this) }
+                                                        okText="删除"
+                                                        cancelText="取消"
+                                                    >
+                                                        <Button
+                                                            icon="delete"
+                                                            loading={ removing }
+                                                        >删除</Button>
+                                                    </Popconfirm>
+                                                </div>
+                                            ) : null
+                                        }
                                     </div>) :
                                     null
                             }

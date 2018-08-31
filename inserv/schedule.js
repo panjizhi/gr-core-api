@@ -1,4 +1,7 @@
+const { PERMISSIONS } = require('../includes/decl');
 const utils = require('../includes/utils');
+const { Check } = require('../includes/login');
+const permission = require('../includes/permission');
 const mongodb = require('../drivers/mongodb');
 const schedule = require('../dal/schedule.dal');
 
@@ -33,11 +36,19 @@ module.exports = {
             start: 'uint',
             count: 'uint'
         }),
+        Check(),
         mongodb.CheckObjectID('candidate', 'paper'),
         (req, cb) =>
         {
+            const { classes } = req.session.login;
+            const co = { classes };
+            if (mongodb.Convert(co, { classes: 1 }))
+            {
+                return cb(1);
+            }
+
             const { _paper, paper_name, _candidate, candidate_name, done, sorter, start, count } = req.body;
-            schedule.GetMany(_paper, paper_name, _candidate, candidate_name, done, sorter, start, count, utils.DefaultCallback(cb, 1));
+            schedule.GetMany(_paper, paper_name, _candidate, candidate_name, done, sorter, co.classes, start, count, utils.DefaultCallback(cb, 1));
         }
     ],
     GetAutoMany: [
@@ -51,10 +62,18 @@ module.exports = {
                 null: 1
             }
         }),
+        permission.Check({
+            value: [
+                PERMISSIONS.NEW_SCHEDULE,
+                PERMISSIONS.AUTO_SCHEDULE
+            ],
+            or: 1
+        }),
         (req, cb) =>
         {
+            const { login } = req.session;
             const { limit, detail } = req.body;
-            schedule.GetAutoMany(limit, detail, utils.DefaultCallback(cb, 1));
+            schedule.GetAutoMany(limit, detail, login, utils.DefaultCallback(cb, 1));
         }
     ],
     GetAutoSingle: [
@@ -102,16 +121,21 @@ module.exports = {
                 null: 1
             },
             name: 'string',
+            subject: 'string',
             flow: {
                 type: 'array',
                 item: 'string'
             }
         }),
-        mongodb.CheckObjectID('id'),
+        mongodb.ConvertInput({
+            id: 1,
+            subject: 1,
+            flow: 1
+        }),
         (req, cb) =>
         {
-            const { _id, name, flow } = req.body;
-            schedule.SaveAutoSingle(_id, name, flow, utils.DefaultCallback(cb));
+            const { id, name, subject, flow } = req.body;
+            schedule.SaveAutoSingle(id, name, subject, flow, utils.DefaultCallback(cb));
         }
     ],
     RemoveSingle: [

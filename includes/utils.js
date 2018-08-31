@@ -2,9 +2,17 @@ const crypto = require('crypto');
 const common = require('../includes/common');
 
 module.exports = {
+    CreateRedisKey: (...fields) =>
+    {
+        return fields.join(':');
+    },
     CreateNormalID: () =>
     {
         return module.exports.CreateRandomBytesBit(8);
+    },
+    CreateSign: (content, salt) =>
+    {
+        return crypto.createHash('sha256').update(salt + content).digest().toString('hex');
     },
     CreateRandomBytesBit: (num) =>
     {
@@ -14,24 +22,10 @@ module.exports = {
         }
         return crypto.randomBytes(num).toString('hex');
     },
-    CreateSign: (salt, content) =>
+    GetURLPrefix: (stgsNode) =>
     {
-        return crypto.createHash('sha256').update(salt + content).digest().toString('hex');
-    },
-    CheckServiceStruct: (struct) =>
-    {
-        return (req, cb) =>
-        {
-            let params = req.body;
-
-            let lnks = [];
-            if (common.CheckStruct(params, struct, lnks))
-            {
-                return cb(-2, null, lnks.join('->'));
-            }
-
-            cb(0);
-        };
+        const p = '//' + stgsNode.host + (stgsNode.path || '');
+        return stgsNode.protocol ? (stgsNode.protocol + ':' + p) : p;
     },
     CheckObjectFields: (struct, get) =>
     {
@@ -46,9 +40,24 @@ module.exports = {
 
             let lnks = [];
             if (common.CheckStruct(params, {
-                    type: 'object',
-                    fields: struct
-                }, lnks))
+                type: 'object',
+                fields: struct
+            }, lnks))
+            {
+                return cb(-2, null, lnks.join('->'));
+            }
+
+            cb(0);
+        };
+    },
+    CheckServiceStruct: (struct) =>
+    {
+        return (req, cb) =>
+        {
+            let params = req.body;
+
+            let lnks = [];
+            if (common.CheckStruct(params, struct, lnks))
             {
                 return cb(-2, null, lnks.join('->'));
             }
