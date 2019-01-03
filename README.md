@@ -1,5 +1,7 @@
 # gr-core-api
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/panjizhi/gr-core-api.svg)](https://greenkeeper.io/)
+
 GR core APIs
 
 #### 简介
